@@ -1,0 +1,267 @@
+/* Calmer console theme, a middle step towards the v2 design in docs/design.
+   Loaded after styles.css so it only overrides.
+   - Ink on paper, no evergreen accent: primary buttons are ink.
+   - Red means overdue or out of range. Amber is kept for "needs a decision".
+     Blue and purple status tints become neutral grey.
+   - Small corners, no drop shadows, no page fade-in.
+   - Atkinson Hyperlegible Next + Mono (clear I/l/1 and 0/O in MRNs and lab values). */
+
+:root {
+  --paper: #f6f5f2;
+  --paper-2: #efeeea;
+  --surface: #ffffff;
+  --surface-2: #faf9f7;
+  --ink: #18191b;
+  --ink-2: #45484d;
+  --muted: #5e6167;
+  --line: #e2e0da;
+  --line-strong: #c4c1b9;
+  --green: #18191b;
+  --green-strong: #000000;
+  --green-soft: #efeeea;
+  --green-wash: #f3f2ee;
+  --amber: #8a5a12;
+  --amber-soft: #f7efdf;
+  --red: #b42318;
+  --red-soft: #fbedeb;
+  --blue: #45484d;
+  --blue-soft: #efeeea;
+  --purple: #45484d;
+  --purple-soft: #efeeea;
+  --focus: #2f5bd3;
+  --rail: #ffffff;
+  --rail-text: #18191b;
+  --rail-muted: #5e6167;
+  --shadow: none;
+  --shadow-sm: none;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --font-sans: "Atkinson Hyperlegible Next", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: var(--font-sans);
+  font-size: 14px;
+}
+
+::selection {
+  background: #dcdad3;
+}
+
+:focus-visible {
+  outline-color: var(--focus);
+}
+
+.page {
+  animation: none;
+}
+
+/* Sidebar: light, quiet, one grey fill for the current page. */
+.app-shell .sidebar {
+  width: 216px;
+  gap: 18px;
+  padding: 18px 12px;
+  background: var(--paper);
+  color: var(--ink);
+  border-right: 1px solid var(--line);
+}
+
+@media (min-width: 981px) {
+  .app-shell {
+    grid-template-columns: 216px minmax(0, 1fr);
+  }
+}
+
+.app-shell .brand {
+  color: var(--ink);
+}
+
+.app-shell .brandmark {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background: var(--ink);
+  color: #fff;
+}
+
+.app-shell .brand-word {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.app-shell .brand-word small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.app-shell .nav {
+  height: 34px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.app-shell .nav:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.app-shell .nav.nav-active {
+  background: #e9e8e3;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.app-shell .nav.nav-active::before {
+  display: none;
+}
+
+.app-shell .nav-icon {
+  opacity: 0.7;
+}
+
+.app-shell .nav b {
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  background: none;
+  color: var(--red);
+  font-size: 12px;
+}
+
+.app-shell .nav-group-label {
+  margin: 14px 10px 4px;
+}
+
+.app-shell .sidebar-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.app-shell .sidebar-section {
+  border-top: 1px solid var(--line);
+}
+
+.app-shell .sidebar-link {
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
+.app-shell .sidebar-link:hover {
+  color: var(--ink);
+}
+
+.app-shell .patient-link {
+  color: var(--ink);
+  border-radius: 6px;
+}
+
+.app-shell .patient-link:hover,
+.app-shell .patient-link-active {
+  background: var(--paper-2);
+}
+
+.app-shell .patient-link-name {
+  font-size: 13px;
+}
+
+.app-shell .patient-link-name small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.app-shell .patient-link em {
+  background: none;
+  color: var(--red);
+  font-size: 12px;
+}
+
+.app-shell .avatar-sidebar,
+.app-shell .avatar-user {
+  border-radius: 6px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+
+.app-shell .avatar-sidebar.avatar-high {
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+
+.app-shell .privacy {
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+}
+
+.app-shell .privacy-dot {
+  background: var(--muted);
+  box-shadow: none;
+}
+
+.app-shell .privacy small,
+.app-shell .user-card small {
+  color: var(--muted);
+}
+
+/* Top bar: plain, and the assistant is a secondary button, not the hero. */
+.topbar {
+  background: var(--surface);
+  backdrop-filter: none;
+}
+
+.top-actions .top-ask {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.top-actions .top-ask:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* Buttons and surfaces */
+.btn {
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.btn-primary,
+.btn-primary:hover {
+  color: #fff;
+}
+
+.card,
+.metric,
+.obligation-card,
+.approval-card {
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+
+/* Headlines: sans, bold, smaller. No serif display or mono uppercase eyebrows. */
+.page-head h1 {
+  font-family: var(--font-sans);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.eyebrow-dot {
+  display: none;
+}
