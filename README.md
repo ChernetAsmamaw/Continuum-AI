@@ -27,64 +27,17 @@ The follow-up is spread across hospitals, clinics, labs and phone calls, and eve
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  subgraph Hospital
-    EHR["EHR<br/>HL7 ADT^A03 + FHIR R4"]
-  end
-  subgraph Continuum["Continuum (FastAPI)"]
-    ING["Ingestion<br/>checkpointed jobs"]
-    AGENT["Agent<br/>LangGraph + Gemini"]
-    SWEEP["Automations<br/>every 5 min"]
-    VOICE["Voice tools<br/>/api/voice/*"]
-    ASSIST["Console assistant<br/>tool-calling agent"]
-  end
-  ATLAS[("MongoDB Atlas<br/>state · evidence · ledger · audit<br/>Vector Search · change streams<br/>LangGraph checkpoints")]
-  EL["ElevenLabs<br/>voice agent + Twilio number"]
-  UI["Care team console<br/>React"]
-  LS["LangSmith<br/>traces"]
-  PT["Patient"]
-
-  EHR -- discharge --> ING --> ATLAS
-  SWEEP -- results, appointments --> EHR
-  ATLAS <--> AGENT
-  ATLAS <--> SWEEP
-  SWEEP -- place call --> EL
-  EL <--> PT
-  EL -- tool calls + transcript --> VOICE <--> ATLAS
-  ATLAS -- change streams --> UI
-  UI <--> ASSIST <--> ATLAS
-  AGENT -.-> LS
-  ASSIST -.-> LS
-```
+<p align="center"><img src="docs/diagrams/big-picture.svg" alt="Architecture: hospital EHR, ingestion, AI agent, automations, MongoDB Atlas, voice agent, patient, console, LangSmith" width="100%"></p>
 
 Everything shares one source of truth in Atlas. The console never polls for changes: change streams push every write to it as it happens.
 
 ## How one discharge flows
 
-```mermaid
-sequenceDiagram
-  autonumber
-  participant H as Hospital EHR
-  participant C as Continuum
-  participant A as Atlas
-  participant V as Voice agent
-  participant P as Patient
-  participant T as Care team
-  H->>C: HL7 discharge message (MLLP or HTTP)
-  C->>H: FHIR pull: patient, encounter, orders, appointments, meds, summary
-  C->>A: Follow-ups with owners and deadlines (job checkpointed per step)
-  Note over C,A: pull → identify → structured → narrative → verify
-  C->>V: Check-in due: place the call
-  V->>P: Discloses AI + recording, asks consent, verifies name + date of birth
-  P->>V: "I booked my blood test for Monday"
-  V->>C: submit_patient_report → saved as patient-reported, not verified
-  C-->>T: Live in "Needs you"
-  C->>H: Poll for results
-  H-->>C: Final lab result
-  C->>A: Evidence attached, closure queued
-  T->>A: Approve → verified
-```
+<p align="center"><img src="docs/diagrams/discharge-to-follow-ups.svg" alt="From discharge to follow-ups in five checkpointed steps" width="100%"></p>
+
+<p align="center"><img src="docs/diagrams/check-in-call.svg" alt="A check-in call: consent, identity, notes, requests, escalation, goodbye" width="100%"></p>
+
+<p align="center"><img src="docs/diagrams/automations.svg" alt="What runs automatically across the 30 days" width="100%"></p>
 
 ## The agent
 
@@ -92,10 +45,7 @@ Two LangGraph agents work on the same Atlas data.
 
 **Follow-up agent**: runs on every document, call transcript and patient report.
 
-```mermaid
-flowchart LR
-  ingest --> extract --> retrieve --> validate --> propose --> apply_auto --> await_approval --> compose
-```
+<p align="center"><img src="docs/diagrams/agent-flow.svg" alt="The follow-up agent's LangGraph steps" width="100%"></p>
 
 - **extract**: Gemini pulls follow-ups, dates and reports out of free text, with rules as a fallback.
 - **retrieve**: patient memory from **Atlas Vector Search**, filtered to that patient only.
@@ -114,6 +64,14 @@ flowchart LR
 | Tell an action that took effect from one only sent | **Action ledger**: `intended → sent → confirmed`, or `unconfirmed / failed / unknown`, reconciled every sweep. A call is confirmed only by its transcript. |
 | Resume after a crash without replaying history | **Checkpointed ingestion jobs** with leases. A killed job resumes at the next step on restart, and change streams resume from a saved token. |
 | Adapt when a system changes underneath it | **Order memory**: a referral under a new code or wording is matched by meaning, and a coordinator's correction is remembered. |
+
+### The three hard parts
+
+<p align="center"><img src="docs/diagrams/proof-before-done.svg" alt="Proof before done: follow-up states and the action ledger" width="100%"></p>
+
+<p align="center"><img src="docs/diagrams/surviving-a-crash.svg" alt="A crashed import resumes from the next saved step" width="100%"></p>
+
+<p align="center"><img src="docs/diagrams/hospital-changes-codes.svg" alt="New hospital codes matched by meaning with Atlas Vector Search" width="100%"></p>
 
 ## LangSmith
 
@@ -141,6 +99,8 @@ cd ../frontend && npm ci && npm run build   # served by the API at http://localh
 ```
 
 Tests: `cd backend && .venv/bin/python -m pytest -q`
+
+Diagrams are Excalidraw files in [`docs/diagrams/`](docs/diagrams): open any `.excalidraw` file on excalidraw.com to edit it.
 
 More detail: [docs/ingestion.md](docs/ingestion.md) · [docs/atlas.md](docs/atlas.md) · [docs/elevenlabs-setup.md](docs/elevenlabs-setup.md) · [docs/demo-runbook.md](docs/demo-runbook.md) · [docs/security-review.md](docs/security-review.md)
 
