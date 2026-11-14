@@ -1,0 +1,35 @@
+# Environment
+.env
+.env.local
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist-info/
+
+# Node
+node_modules/
+frontend/node_modules/
+.vite/
+*.tsbuildinfo
+
+# Build output
+dist/
+!legacy/
+build/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+scripts/ehr_sandbox/.manifest.json
