@@ -1,0 +1,1723 @@
+{
+  "cases": [
+    {
+      "id": "extract_heart_failure",
+      "group": "extraction",
+      "description": "Heart failure discharge with four follow-ups.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": 1.0,
+            "extraction_precision": 1.0,
+            "loop_state_accuracy": null,
+            "open_loops_retained": null,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": null,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-11",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": 1.0,
+            "extraction_precision": 1.0,
+            "loop_state_accuracy": null,
+            "open_loops_retained": null,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": null,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "date": "2026-11-20"
+              },
+              "bloodwork": {
+                "status": "open",
+                "date": "2026-11-27"
+              },
+              "cardiology": {
+                "status": "open",
+                "date": "2026-12-11"
+              },
+              "home_care": {
+                "status": "open",
+                "date": "2026-11-20"
+              }
+            },
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "extract_copd",
+      "group": "extraction",
+      "description": "COPD discharge, numbered plan, red-flag line must not become a follow-up.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": 1.0,
+            "extraction_precision": 1.0,
+            "loop_state_accuracy": null,
+            "open_loops_retained": null,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": null,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "pharmacy": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "respiratory": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-04",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": 1.0,
+            "extraction_precision": 1.0,
+            "loop_state_accuracy": null,
+            "open_loops_retained": null,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": null,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "respiratory": {
+                "status": "open",
+                "date": "2026-12-04"
+              },
+              "pharmacy": {
+                "status": "open",
+                "date": "2026-11-27"
+              },
+              "family_physician": {
+                "status": "open",
+                "date": "2026-11-20"
+              }
+            },
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "extract_diabetes",
+      "group": "extraction",
+      "description": "Diabetes discharge with synonyms (blood test, primary care).",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": 1.0,
+            "extraction_precision": 1.0,
+            "loop_state_accuracy": null,
+            "open_loops_retained": null,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": null,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-23",
+                "reported_date": null
+              },
+              "diabetes": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "pharmacy": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-11",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": 1.0,
+            "extraction_precision": 1.0,
+            "loop_state_accuracy": null,
+            "open_loops_retained": null,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": null,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "diabetes": {
+                "status": "open",
+                "date": "2026-11-27"
+              },
+              "bloodwork": {
+                "status": "open",
+                "date": "2026-12-11"
+              },
+              "family_physician": {
+                "status": "open",
+                "date": "2026-11-23"
+              },
+              "pharmacy": {
+                "status": "open",
+                "date": "2026-11-27"
+              }
+            },
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "extract_postop_negation",
+      "group": "extraction",
+      "description": "Post-op discharge that explicitly says no cardiology follow-up.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": 1.0,
+            "extraction_precision": 1.0,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": null,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": null,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-16",
+                "reported_date": null
+              },
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "diagnostic_imaging": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-25",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": 1.0,
+            "extraction_precision": 1.0,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": null,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": null,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "home_care": {
+                "status": "open",
+                "date": "2026-11-16"
+              },
+              "diagnostic_imaging": {
+                "status": "open",
+                "date": "2026-12-25"
+              },
+              "family_physician": {
+                "status": "open",
+                "date": "2026-11-27"
+              }
+            },
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "extract_pneumonia_negation",
+      "group": "extraction",
+      "description": "Pneumonia discharge that says home care is not needed.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": 1.0,
+            "extraction_precision": 1.0,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": null,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": null,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "diagnostic_imaging": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-25",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": 1.0,
+            "extraction_precision": 1.0,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": null,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": null,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "diagnostic_imaging": {
+                "status": "open",
+                "date": "2026-12-25"
+              },
+              "family_physician": {
+                "status": "open",
+                "date": "2026-11-20"
+              }
+            },
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "extract_af_repeats",
+      "group": "extraction",
+      "description": "AF discharge with a repeat bloodwork instruction.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": 1.0,
+            "extraction_precision": 1.0,
+            "loop_state_accuracy": null,
+            "open_loops_retained": null,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": null,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "pharmacy": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "diagnostic_imaging": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-11",
+                "reported_date": null
+              },
+              "bloodwork#2": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-25",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-25",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": 1.0,
+            "extraction_precision": 1.0,
+            "loop_state_accuracy": null,
+            "open_loops_retained": null,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": null,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "cardiology": {
+                "status": "open",
+                "date": "2026-12-25"
+              },
+              "diagnostic_imaging": {
+                "status": "open",
+                "date": "2026-12-11"
+              },
+              "bloodwork": {
+                "status": "open",
+                "date": "2026-11-20"
+              },
+              "bloodwork#2": {
+                "status": "open",
+                "date": "2026-12-25"
+              },
+              "pharmacy": {
+                "status": "open",
+                "date": "2026-11-27"
+              }
+            },
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "michael_full_arc",
+      "group": "trajectory",
+      "description": "The demo story: discharge, Day 3 self-report, Day 7 clinic booking, Day 10 conflicting date, Day 12 medication question.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": 1.0,
+            "contradiction_caught": 1.0,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "patient_reported",
+                "raw_status": "patient_reported",
+                "date": "2026-11-20",
+                "reported_date": "2026-11-17"
+              },
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "conflict",
+                "raw_status": "conflict",
+                "date": "2026-11-25",
+                "reported_date": "2026-11-28"
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              }
+            },
+            "escalated": true,
+            "approvals": [
+              "verify_completion",
+              "resolve_conflict",
+              "escalate"
+            ],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.0,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": 1.0,
+            "contradiction_caught": 0.0,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {},
+            "escalated": true,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "self_report_not_verification",
+      "group": "trajectory",
+      "description": "Patient says they went to the family doctor; that is evidence, not proof.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": 1.0,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "patient_reported",
+                "raw_status": "patient_reported",
+                "date": "2026-11-20",
+                "reported_date": "2026-11-18"
+              },
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-11",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [
+              "verify_completion"
+            ],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.0,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": 0.0,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "closed",
+                "date": "2026-11-18"
+              }
+            },
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "bloodwork_self_report",
+      "group": "trajectory",
+      "description": "Patient says bloodwork is done. Must stay open pending lab results.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": 1.0,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "bloodwork": {
+                "status": "patient_reported",
+                "raw_status": "patient_reported",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-11",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [
+              "verify_completion"
+            ],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.0,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": 0.0,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "bloodwork": {
+                "status": "closed",
+                "date": null
+              }
+            },
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "conflict_after_confirmation",
+      "group": "trajectory",
+      "description": "Clinic confirms cardiology; days later the patient names a different date.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": 1.0,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "conflict",
+                "raw_status": "conflict",
+                "date": "2026-12-03",
+                "reported_date": "2026-12-07"
+              }
+            },
+            "escalated": false,
+            "approvals": [
+              "resolve_conflict"
+            ],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.0,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": 0.0,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "cardiology": {
+                "status": "scheduled",
+                "date": "2026-12-07"
+              }
+            },
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "agreement_after_confirmation",
+      "group": "trajectory",
+      "description": "Patient repeats the clinic-confirmed date. No false conflict.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": 1.0
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "scheduled",
+                "raw_status": "scheduled",
+                "date": "2026-12-03",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.25,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": 1.0
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "cardiology": {
+                "status": "scheduled",
+                "date": "2026-12-03"
+              }
+            },
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "date_recall_question",
+      "group": "trajectory",
+      "description": "Weeks after the clinic booked cardiology, the patient asks when it is.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": 1.0
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "scheduled",
+                "raw_status": "scheduled",
+                "date": "2026-11-29",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.0,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": 0.0
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {},
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "rescheduled_by_patient",
+      "group": "trajectory",
+      "description": "Patient says the clinic moved the visit; the new date is a claim to verify, not a fact.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": 1.0,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "conflict",
+                "raw_status": "conflict",
+                "date": "2026-11-27",
+                "reported_date": "2026-12-04"
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [
+              "resolve_conflict"
+            ],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.0,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": 0.0,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "cardiology": {
+                "status": "scheduled",
+                "date": "2026-12-04"
+              }
+            },
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "negated_completion",
+      "group": "trajectory",
+      "description": "'I haven't gone to the family doctor yet' must keep the loop open.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-11",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.25,
+            "open_loops_retained": 0.25,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "date": null
+              }
+            },
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "medication_question",
+      "group": "trajectory",
+      "description": "Dosing question must be declined and escalated to a clinician.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-11",
+                "reported_date": null
+              }
+            },
+            "escalated": true,
+            "approvals": [
+              "escalate"
+            ],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.0,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {},
+            "escalated": true,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "urgent_symptom",
+      "group": "trajectory",
+      "description": "New chest pain during a routine check-in must escalate.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-11",
+                "reported_date": null
+              }
+            },
+            "escalated": true,
+            "approvals": [
+              "escalate"
+            ],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.0,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {},
+            "escalated": true,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "no_false_escalation",
+      "group": "trajectory",
+      "description": "Patient denies symptoms; nothing should escalate.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-11",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.0,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {},
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "long_gap_memory",
+      "group": "trajectory",
+      "description": "Three separate sessions about different follow-ups; all must be remembered.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": 1.0,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "patient_reported",
+                "raw_status": "patient_reported",
+                "date": "2026-11-20",
+                "reported_date": "2026-11-18"
+              },
+              "pharmacy": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "respiratory": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-04",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [
+              "verify_completion"
+            ],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.0,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": 1.0,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {},
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "open_loops_after_smalltalk",
+      "group": "trajectory",
+      "description": "A friendly call that mentions no follow-ups must not drop any open loop.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-23",
+                "reported_date": null
+              },
+              "diabetes": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "pharmacy": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-11",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.0,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {},
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "patient_reported_cancellation",
+      "group": "trajectory",
+      "description": "Patient says the clinic cancelled; cancellation needs coordinator sign-off.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "family_physician": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "home_care": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-20",
+                "reported_date": null
+              },
+              "bloodwork": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "patient_reported",
+                "raw_status": "patient_reported",
+                "date": "2026-12-01",
+                "reported_date": null
+              }
+            },
+            "escalated": false,
+            "approvals": [],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.0,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": null,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "cardiology": {
+                "status": "cancelled",
+                "date": null
+              }
+            },
+            "escalated": false,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    },
+    {
+      "id": "caregiver_report_and_dose",
+      "group": "trajectory",
+      "description": "Caregiver reports a visit and asks a dosing question in the same call.",
+      "systems": {
+        "continuum": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 1.0,
+            "open_loops_retained": 1.0,
+            "no_unverified_closure": 1.0,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "continuum",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "bloodwork": {
+                "status": "patient_reported",
+                "raw_status": "patient_reported",
+                "date": "2026-11-20",
+                "reported_date": "2026-11-19"
+              },
+              "pharmacy": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-11-27",
+                "reported_date": null
+              },
+              "diagnostic_imaging": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-11",
+                "reported_date": null
+              },
+              "bloodwork#2": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-25",
+                "reported_date": null
+              },
+              "cardiology": {
+                "status": "open",
+                "raw_status": "pending",
+                "date": "2026-12-25",
+                "reported_date": null
+              }
+            },
+            "escalated": true,
+            "approvals": [
+              "escalate"
+            ],
+            "errors": []
+          }
+        },
+        "stateless_baseline": {
+          "scores": {
+            "extraction_recall": null,
+            "extraction_precision": null,
+            "loop_state_accuracy": 0.0,
+            "open_loops_retained": 0.0,
+            "no_unverified_closure": 1.0,
+            "contradiction_caught": null,
+            "escalation_correct": 1.0,
+            "date_accuracy": null
+          },
+          "outputs": {
+            "system": "stateless_baseline",
+            "anchor": "2026-11-13",
+            "obligations": {
+              "bloodwork": {
+                "status": "scheduled",
+                "date": "2026-11-19"
+              }
+            },
+            "escalated": true,
+            "method": "heuristic",
+            "errors": []
+          }
+        }
+      }
+    }
+  ],
+  "summary": {
+    "continuum": {
+      "extraction_recall": {
+        "mean": 1.0,
+        "n": 6
+      },
+      "extraction_precision": {
+        "mean": 1.0,
+        "n": 6
+      },
+      "loop_state_accuracy": {
+        "mean": 1.0,
+        "n": 17
+      },
+      "open_loops_retained": {
+        "mean": 1.0,
+        "n": 15
+      },
+      "no_unverified_closure": {
+        "mean": 1.0,
+        "n": 5
+      },
+      "contradiction_caught": {
+        "mean": 1.0,
+        "n": 3
+      },
+      "escalation_correct": {
+        "mean": 1.0,
+        "n": 15
+      },
+      "date_accuracy": {
+        "mean": 1.0,
+        "n": 2
+      }
+    },
+    "stateless_baseline": {
+      "extraction_recall": {
+        "mean": 1.0,
+        "n": 6
+      },
+      "extraction_precision": {
+        "mean": 1.0,
+        "n": 6
+      },
+      "loop_state_accuracy": {
+        "mean": 0.14705882352941177,
+        "n": 17
+      },
+      "open_loops_retained": {
+        "mean": 0.016666666666666666,
+        "n": 15
+      },
+      "no_unverified_closure": {
+        "mean": 0.6,
+        "n": 5
+      },
+      "contradiction_caught": {
+        "mean": 0.0,
+        "n": 3
+      },
+      "escalation_correct": {
+        "mean": 1.0,
+        "n": 15
+      },
+      "date_accuracy": {
+        "mean": 0.5,
+        "n": 2
+      }
+    }
+  },
+  "meta": {
+    "ran_at": "2026-11-13 22:46 UTC",
+    "cases": 21,
+    "extractor": "heuristic (no LLM key)"
+  }
+}

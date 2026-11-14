@@ -1,0 +1,1558 @@
+{
+  "label": "after-1",
+  "at": "2026-11-14T01:14:34",
+  "setup": {
+    "ms": 12510.5,
+    "mongo": 118,
+    "fhir": 0,
+    "mongo_by_command": {
+      "listCollections": 9,
+      "create": 4,
+      "createIndexes": 54,
+      "find": 7,
+      "insert": 26,
+      "aggregate": 5,
+      "update": 10,
+      "createSearchIndexes": 3
+    },
+    "mongo_by_target": {
+      "listCollections": 9,
+      "create obligations": 1,
+      "create actions": 1,
+      "create ingest_jobs": 1,
+      "create evidence": 1,
+      "createIndexes patients": 4,
+      "createIndexes care_episodes": 3,
+      "createIndexes events": 4,
+      "createIndexes obligations": 5,
+      "createIndexes evidence": 4,
+      "createIndexes memories": 3,
+      "createIndexes agent_audit": 4,
+      "createIndexes voice_calls": 3,
+      "createIndexes approvals": 5,
+      "createIndexes checkins": 1,
+      "createIndexes users": 2,
+      "createIndexes hl7_messages": 2,
+      "createIndexes ingest_runs": 3,
+      "createIndexes ehr_poll_runs": 1,
+      "createIndexes ingest_jobs": 3,
+      "createIndexes order_memory": 2,
+      "createIndexes actions": 5,
+      "find users": 2,
+      "insert users": 2,
+      "aggregate patients": 1,
+      "update patients": 4,
+      "update care_episodes": 4,
+      "insert obligations": 10,
+      "update obligations": 2,
+      "insert events": 4,
+      "insert voice_calls": 1,
+      "find obligations": 3,
+      "insert evidence": 1,
+      "insert memories": 5,
+      "insert approvals": 1,
+      "insert agent_audit": 2,
+      "find memories": 2,
+      "aggregate memories": 2,
+      "createSearchIndexes memories": 2,
+      "aggregate order_memory": 2,
+      "createSearchIndexes order_memory": 1
+    },
+    "fhir_by_type": {},
+    "fhir_ms_by_type": {},
+    "vector_ready": true,
+    "order_vector_ready": true
+  },
+  "ingest": {
+    "first_ingest": {
+      "ms": 7608.9,
+      "max_ms": 13889.9,
+      "mongo": 104.0,
+      "fhir": 7.0,
+      "steps": {
+        "pull": {
+          "ms": 2640.8,
+          "mongo": 0.0,
+          "fhir": 7.0
+        },
+        "identify": {
+          "ms": 539.4,
+          "mongo": 13.0,
+          "fhir": 0.0
+        },
+        "structured": {
+          "ms": 468.0,
+          "mongo": 10.0,
+          "fhir": 0.0
+        },
+        "narrative": {
+          "ms": 3249.8,
+          "mongo": 56.0,
+          "fhir": 0.0
+        },
+        "verify": {
+          "ms": 255.5,
+          "mongo": 6.0,
+          "fhir": 0.0
+        }
+      },
+      "runs": [
+        {
+          "patient": 1,
+          "round": 0,
+          "ms": 9318.5,
+          "mongo": 110,
+          "fhir": 7,
+          "mongo_by_command": {
+            "createIndexes": 2,
+            "find": 42,
+            "insert": 24,
+            "aggregate": 3,
+            "update": 36,
+            "findAndModify": 1,
+            "listIndexes": 2
+          },
+          "mongo_by_target": {
+            "update patients": 1,
+            "update care_episodes": 2,
+            "insert obligations": 3,
+            "update obligations": 1,
+            "insert events": 3,
+            "find obligations": 12,
+            "insert evidence": 1,
+            "insert memories": 8,
+            "insert agent_audit": 4,
+            "find memories": 2,
+            "aggregate memories": 1,
+            "aggregate order_memory": 2,
+            "find hl7_messages": 1,
+            "find ingest_jobs": 2,
+            "insert ingest_jobs": 1,
+            "findAndModify ingest_jobs": 1,
+            "update ingest_jobs": 11,
+            "find care_episodes": 3,
+            "find patients": 8,
+            "insert patients": 1,
+            "insert care_episodes": 1,
+            "find order_memory": 2,
+            "insert order_memory": 1,
+            "listIndexes checkpoints": 1,
+            "createIndexes checkpoints": 1,
+            "listIndexes checkpoint_writes": 1,
+            "createIndexes checkpoint_writes": 1,
+            "find checkpoints": 3,
+            "update checkpoints": 10,
+            "update checkpoint_writes": 9,
+            "find approvals": 4,
+            "find events": 3,
+            "update memories": 1,
+            "find checkpoint_writes": 1,
+            "find ingest_runs": 1,
+            "insert ingest_runs": 1,
+            "update hl7_messages": 1
+          },
+          "fhir_by_type": {
+            "Encounter": 1,
+            "Patient": 1,
+            "DiagnosticReport": 1,
+            "ServiceRequest": 1,
+            "DocumentReference": 1,
+            "Appointment": 1,
+            "MedicationRequest": 1
+          },
+          "fhir_ms_by_type": {
+            "Encounter": 2371.9,
+            "Patient": 2421.6,
+            "DiagnosticReport": 865.3,
+            "ServiceRequest": 962.9,
+            "DocumentReference": 999.1,
+            "Appointment": 1044.8,
+            "MedicationRequest": 1175.3
+          },
+          "outcome": "new_patient",
+          "detail": "5 structured follow-up(s), 2 from the discharge narrative",
+          "steps": [
+            {
+              "step": "pull",
+              "ms": 3692.6,
+              "mongo": 0,
+              "fhir": 7,
+              "mongo_by_command": {},
+              "mongo_by_target": {},
+              "fhir_by_type": {
+                "Encounter": 1,
+                "Patient": 1,
+                "DiagnosticReport": 1,
+                "ServiceRequest": 1,
+                "DocumentReference": 1,
+                "Appointment": 1,
+                "MedicationRequest": 1
+              },
+              "fhir_ms_by_type": {
+                "Encounter": 2371.9,
+                "Patient": 2421.6,
+                "DiagnosticReport": 865.3,
+                "ServiceRequest": 962.9,
+                "DocumentReference": 999.1,
+                "Appointment": 1044.8,
+                "MedicationRequest": 1175.3
+              }
+            },
+            {
+              "step": "identify",
+              "ms": 1931.3,
+              "mongo": 13,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 6,
+                "insert": 5,
+                "update": 2
+              },
+              "mongo_by_target": {
+                "update patients": 1,
+                "update care_episodes": 1,
+                "insert events": 1,
+                "find obligations": 1,
+                "insert memories": 1,
+                "insert agent_audit": 1,
+                "find care_episodes": 1,
+                "find patients": 4,
+                "insert patients": 1,
+                "insert care_episodes": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "structured",
+              "ms": 597.6,
+              "mongo": 10,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 3,
+                "insert": 5,
+                "aggregate": 2
+              },
+              "mongo_by_target": {
+                "insert obligations": 1,
+                "find obligations": 1,
+                "insert evidence": 1,
+                "insert memories": 1,
+                "insert agent_audit": 1,
+                "aggregate order_memory": 2,
+                "find order_memory": 2,
+                "insert order_memory": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "narrative",
+              "ms": 2490.0,
+              "mongo": 64,
+              "fhir": 0,
+              "mongo_by_command": {
+                "createIndexes": 2,
+                "find": 27,
+                "insert": 10,
+                "aggregate": 1,
+                "update": 22,
+                "listIndexes": 2
+              },
+              "mongo_by_target": {
+                "update care_episodes": 1,
+                "insert obligations": 2,
+                "update obligations": 1,
+                "insert events": 1,
+                "find obligations": 8,
+                "insert memories": 5,
+                "insert agent_audit": 2,
+                "find memories": 2,
+                "aggregate memories": 1,
+                "find care_episodes": 2,
+                "find patients": 4,
+                "listIndexes checkpoints": 1,
+                "createIndexes checkpoints": 1,
+                "listIndexes checkpoint_writes": 1,
+                "createIndexes checkpoint_writes": 1,
+                "find checkpoints": 3,
+                "update checkpoints": 10,
+                "update checkpoint_writes": 9,
+                "find approvals": 4,
+                "find events": 3,
+                "update memories": 1,
+                "find checkpoint_writes": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "verify",
+              "ms": 219.2,
+              "mongo": 6,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 3,
+                "insert": 3
+              },
+              "mongo_by_target": {
+                "insert events": 1,
+                "find obligations": 2,
+                "insert memories": 1,
+                "find ingest_runs": 1,
+                "insert ingest_runs": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            }
+          ]
+        },
+        {
+          "patient": 2,
+          "round": 0,
+          "ms": 6237.2,
+          "mongo": 104,
+          "fhir": 7,
+          "mongo_by_command": {
+            "find": 42,
+            "insert": 21,
+            "aggregate": 4,
+            "update": 36,
+            "findAndModify": 1
+          },
+          "mongo_by_target": {
+            "update patients": 1,
+            "update care_episodes": 2,
+            "insert obligations": 2,
+            "update obligations": 1,
+            "insert events": 3,
+            "find obligations": 11,
+            "insert evidence": 1,
+            "insert memories": 7,
+            "insert agent_audit": 3,
+            "find memories": 2,
+            "aggregate memories": 1,
+            "aggregate order_memory": 3,
+            "find hl7_messages": 1,
+            "find ingest_jobs": 2,
+            "insert ingest_jobs": 1,
+            "findAndModify ingest_jobs": 1,
+            "update ingest_jobs": 11,
+            "find care_episodes": 3,
+            "find patients": 8,
+            "insert patients": 1,
+            "insert care_episodes": 1,
+            "find order_memory": 3,
+            "insert order_memory": 1,
+            "find checkpoints": 3,
+            "update checkpoints": 10,
+            "update checkpoint_writes": 9,
+            "find approvals": 4,
+            "find events": 3,
+            "update memories": 1,
+            "find checkpoint_writes": 1,
+            "find ingest_runs": 1,
+            "insert ingest_runs": 1,
+            "update hl7_messages": 1
+          },
+          "fhir_by_type": {
+            "Encounter": 1,
+            "Patient": 1,
+            "DiagnosticReport": 1,
+            "ServiceRequest": 1,
+            "DocumentReference": 1,
+            "Appointment": 1,
+            "MedicationRequest": 1
+          },
+          "fhir_ms_by_type": {
+            "Encounter": 2031.1,
+            "Patient": 2099.1,
+            "DiagnosticReport": 456.7,
+            "ServiceRequest": 528.8,
+            "DocumentReference": 543.1,
+            "Appointment": 420.6,
+            "MedicationRequest": 524.2
+          },
+          "outcome": "new_patient",
+          "detail": "7 structured follow-up(s), 1 from the discharge narrative",
+          "steps": [
+            {
+              "step": "pull",
+              "ms": 2690.6,
+              "mongo": 0,
+              "fhir": 7,
+              "mongo_by_command": {},
+              "mongo_by_target": {},
+              "fhir_by_type": {
+                "Encounter": 1,
+                "Patient": 1,
+                "DiagnosticReport": 1,
+                "ServiceRequest": 1,
+                "DocumentReference": 1,
+                "Appointment": 1,
+                "MedicationRequest": 1
+              },
+              "fhir_ms_by_type": {
+                "Encounter": 2031.1,
+                "Patient": 2099.1,
+                "DiagnosticReport": 456.7,
+                "ServiceRequest": 528.8,
+                "DocumentReference": 543.1,
+                "Appointment": 420.6,
+                "MedicationRequest": 524.2
+              }
+            },
+            {
+              "step": "identify",
+              "ms": 537.3,
+              "mongo": 13,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 6,
+                "insert": 5,
+                "update": 2
+              },
+              "mongo_by_target": {
+                "update patients": 1,
+                "update care_episodes": 1,
+                "insert events": 1,
+                "find obligations": 1,
+                "insert memories": 1,
+                "insert agent_audit": 1,
+                "find care_episodes": 1,
+                "find patients": 4,
+                "insert patients": 1,
+                "insert care_episodes": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "structured",
+              "ms": 686.7,
+              "mongo": 12,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 4,
+                "insert": 5,
+                "aggregate": 3
+              },
+              "mongo_by_target": {
+                "insert obligations": 1,
+                "find obligations": 1,
+                "insert evidence": 1,
+                "insert memories": 1,
+                "insert agent_audit": 1,
+                "aggregate order_memory": 3,
+                "find order_memory": 3,
+                "insert order_memory": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "narrative",
+              "ms": 1422.4,
+              "mongo": 56,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 26,
+                "insert": 7,
+                "aggregate": 1,
+                "update": 22
+              },
+              "mongo_by_target": {
+                "update care_episodes": 1,
+                "insert obligations": 1,
+                "update obligations": 1,
+                "insert events": 1,
+                "find obligations": 7,
+                "insert memories": 4,
+                "insert agent_audit": 1,
+                "find memories": 2,
+                "aggregate memories": 1,
+                "find care_episodes": 2,
+                "find patients": 4,
+                "find checkpoints": 3,
+                "update checkpoints": 10,
+                "update checkpoint_writes": 9,
+                "find approvals": 4,
+                "find events": 3,
+                "update memories": 1,
+                "find checkpoint_writes": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "verify",
+              "ms": 564.0,
+              "mongo": 6,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 3,
+                "insert": 3
+              },
+              "mongo_by_target": {
+                "insert events": 1,
+                "find obligations": 2,
+                "insert memories": 1,
+                "find ingest_runs": 1,
+                "insert ingest_runs": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            }
+          ]
+        },
+        {
+          "patient": 3,
+          "round": 0,
+          "ms": 7081.6,
+          "mongo": 98,
+          "fhir": 7,
+          "mongo_by_command": {
+            "find": 40,
+            "insert": 20,
+            "aggregate": 1,
+            "update": 36,
+            "findAndModify": 1
+          },
+          "mongo_by_target": {
+            "update patients": 1,
+            "update care_episodes": 2,
+            "insert obligations": 2,
+            "update obligations": 1,
+            "insert events": 3,
+            "find obligations": 11,
+            "insert evidence": 1,
+            "insert memories": 7,
+            "insert agent_audit": 3,
+            "find memories": 2,
+            "aggregate memories": 1,
+            "find hl7_messages": 1,
+            "find ingest_jobs": 2,
+            "insert ingest_jobs": 1,
+            "findAndModify ingest_jobs": 1,
+            "update ingest_jobs": 11,
+            "find care_episodes": 3,
+            "find patients": 8,
+            "insert patients": 1,
+            "insert care_episodes": 1,
+            "find order_memory": 1,
+            "find checkpoints": 3,
+            "update checkpoints": 10,
+            "update checkpoint_writes": 9,
+            "find approvals": 4,
+            "find events": 3,
+            "update memories": 1,
+            "find checkpoint_writes": 1,
+            "find ingest_runs": 1,
+            "insert ingest_runs": 1,
+            "update hl7_messages": 1
+          },
+          "fhir_by_type": {
+            "Encounter": 1,
+            "Patient": 1,
+            "DiagnosticReport": 1,
+            "ServiceRequest": 1,
+            "DocumentReference": 1,
+            "Appointment": 1,
+            "MedicationRequest": 1
+          },
+          "fhir_ms_by_type": {
+            "Encounter": 456.3,
+            "Patient": 475.0,
+            "DiagnosticReport": 68.0,
+            "ServiceRequest": 208.1,
+            "DocumentReference": 115.3,
+            "Appointment": 119.6,
+            "MedicationRequest": 112.0
+          },
+          "outcome": "new_patient",
+          "detail": "5 structured follow-up(s), 1 from the discharge narrative",
+          "steps": [
+            {
+              "step": "pull",
+              "ms": 717.7,
+              "mongo": 0,
+              "fhir": 7,
+              "mongo_by_command": {},
+              "mongo_by_target": {},
+              "fhir_by_type": {
+                "Encounter": 1,
+                "Patient": 1,
+                "DiagnosticReport": 1,
+                "ServiceRequest": 1,
+                "DocumentReference": 1,
+                "Appointment": 1,
+                "MedicationRequest": 1
+              },
+              "fhir_ms_by_type": {
+                "Encounter": 456.3,
+                "Patient": 475.0,
+                "DiagnosticReport": 68.0,
+                "ServiceRequest": 208.1,
+                "DocumentReference": 115.3,
+                "Appointment": 119.6,
+                "MedicationRequest": 112.0
+              }
+            },
+            {
+              "step": "identify",
+              "ms": 541.5,
+              "mongo": 13,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 6,
+                "insert": 5,
+                "update": 2
+              },
+              "mongo_by_target": {
+                "update patients": 1,
+                "update care_episodes": 1,
+                "insert events": 1,
+                "find obligations": 1,
+                "insert memories": 1,
+                "insert agent_audit": 1,
+                "find care_episodes": 1,
+                "find patients": 4,
+                "insert patients": 1,
+                "insert care_episodes": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "structured",
+              "ms": 105.7,
+              "mongo": 6,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 2,
+                "insert": 4
+              },
+              "mongo_by_target": {
+                "insert obligations": 1,
+                "find obligations": 1,
+                "insert evidence": 1,
+                "insert memories": 1,
+                "insert agent_audit": 1,
+                "find order_memory": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "narrative",
+              "ms": 4273.7,
+              "mongo": 56,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 26,
+                "insert": 7,
+                "aggregate": 1,
+                "update": 22
+              },
+              "mongo_by_target": {
+                "update care_episodes": 1,
+                "insert obligations": 1,
+                "update obligations": 1,
+                "insert events": 1,
+                "find obligations": 7,
+                "insert memories": 4,
+                "insert agent_audit": 1,
+                "find memories": 2,
+                "aggregate memories": 1,
+                "find care_episodes": 2,
+                "find patients": 4,
+                "find checkpoints": 3,
+                "update checkpoints": 10,
+                "update checkpoint_writes": 9,
+                "find approvals": 4,
+                "find events": 3,
+                "update memories": 1,
+                "find checkpoint_writes": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "verify",
+              "ms": 1025.4,
+              "mongo": 6,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 3,
+                "insert": 3
+              },
+              "mongo_by_target": {
+                "insert events": 1,
+                "find obligations": 2,
+                "insert memories": 1,
+                "find ingest_runs": 1,
+                "insert ingest_runs": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            }
+          ]
+        },
+        {
+          "patient": 1,
+          "round": 1,
+          "ms": 13889.9,
+          "mongo": 106,
+          "fhir": 7,
+          "mongo_by_command": {
+            "find": 42,
+            "insert": 24,
+            "aggregate": 3,
+            "update": 36,
+            "findAndModify": 1
+          },
+          "mongo_by_target": {
+            "update patients": 1,
+            "update care_episodes": 2,
+            "insert obligations": 3,
+            "update obligations": 1,
+            "insert events": 3,
+            "find obligations": 12,
+            "insert evidence": 1,
+            "insert memories": 8,
+            "insert agent_audit": 4,
+            "find memories": 2,
+            "aggregate memories": 1,
+            "aggregate order_memory": 2,
+            "find hl7_messages": 1,
+            "find ingest_jobs": 2,
+            "insert ingest_jobs": 1,
+            "findAndModify ingest_jobs": 1,
+            "update ingest_jobs": 11,
+            "find care_episodes": 3,
+            "find patients": 8,
+            "insert patients": 1,
+            "insert care_episodes": 1,
+            "find order_memory": 2,
+            "insert order_memory": 1,
+            "find checkpoints": 3,
+            "update checkpoints": 10,
+            "update checkpoint_writes": 9,
+            "find approvals": 4,
+            "find events": 3,
+            "update memories": 1,
+            "find checkpoint_writes": 1,
+            "find ingest_runs": 1,
+            "insert ingest_runs": 1,
+            "update hl7_messages": 1
+          },
+          "fhir_by_type": {
+            "Encounter": 1,
+            "Patient": 1,
+            "DiagnosticReport": 1,
+            "ServiceRequest": 1,
+            "DocumentReference": 1,
+            "Appointment": 1,
+            "MedicationRequest": 1
+          },
+          "fhir_ms_by_type": {
+            "Encounter": 2082.1,
+            "Patient": 2150.1,
+            "DiagnosticReport": 1754.3,
+            "ServiceRequest": 1761.9,
+            "DocumentReference": 1779.6,
+            "Appointment": 1752.1,
+            "MedicationRequest": 2098.6
+          },
+          "outcome": "new_patient",
+          "detail": "5 structured follow-up(s), 2 from the discharge narrative",
+          "steps": [
+            {
+              "step": "pull",
+              "ms": 4490.0,
+              "mongo": 0,
+              "fhir": 7,
+              "mongo_by_command": {},
+              "mongo_by_target": {},
+              "fhir_by_type": {
+                "Encounter": 1,
+                "Patient": 1,
+                "DiagnosticReport": 1,
+                "ServiceRequest": 1,
+                "DocumentReference": 1,
+                "Appointment": 1,
+                "MedicationRequest": 1
+              },
+              "fhir_ms_by_type": {
+                "Encounter": 2082.1,
+                "Patient": 2150.1,
+                "DiagnosticReport": 1754.3,
+                "ServiceRequest": 1761.9,
+                "DocumentReference": 1779.6,
+                "Appointment": 1752.1,
+                "MedicationRequest": 2098.6
+              }
+            },
+            {
+              "step": "identify",
+              "ms": 542.4,
+              "mongo": 13,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 6,
+                "insert": 5,
+                "update": 2
+              },
+              "mongo_by_target": {
+                "update patients": 1,
+                "update care_episodes": 1,
+                "insert events": 1,
+                "find obligations": 1,
+                "insert memories": 1,
+                "insert agent_audit": 1,
+                "find care_episodes": 1,
+                "find patients": 4,
+                "insert patients": 1,
+                "insert care_episodes": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "structured",
+              "ms": 2578.1,
+              "mongo": 10,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 3,
+                "insert": 5,
+                "aggregate": 2
+              },
+              "mongo_by_target": {
+                "insert obligations": 1,
+                "find obligations": 1,
+                "insert evidence": 1,
+                "insert memories": 1,
+                "insert agent_audit": 1,
+                "aggregate order_memory": 2,
+                "find order_memory": 2,
+                "insert order_memory": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "narrative",
+              "ms": 5384.4,
+              "mongo": 60,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 27,
+                "insert": 10,
+                "aggregate": 1,
+                "update": 22
+              },
+              "mongo_by_target": {
+                "update care_episodes": 1,
+                "insert obligations": 2,
+                "update obligations": 1,
+                "insert events": 1,
+                "find obligations": 8,
+                "insert memories": 5,
+                "insert agent_audit": 2,
+                "find memories": 2,
+                "aggregate memories": 1,
+                "find care_episodes": 2,
+                "find patients": 4,
+                "find checkpoints": 3,
+                "update checkpoints": 10,
+                "update checkpoint_writes": 9,
+                "find approvals": 4,
+                "find events": 3,
+                "update memories": 1,
+                "find checkpoint_writes": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "verify",
+              "ms": 132.4,
+              "mongo": 6,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 3,
+                "insert": 3
+              },
+              "mongo_by_target": {
+                "insert events": 1,
+                "find obligations": 2,
+                "insert memories": 1,
+                "find ingest_runs": 1,
+                "insert ingest_runs": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            }
+          ]
+        },
+        {
+          "patient": 2,
+          "round": 1,
+          "ms": 5278.8,
+          "mongo": 104,
+          "fhir": 7,
+          "mongo_by_command": {
+            "find": 42,
+            "insert": 21,
+            "aggregate": 4,
+            "update": 36,
+            "findAndModify": 1
+          },
+          "mongo_by_target": {
+            "update patients": 1,
+            "update care_episodes": 2,
+            "insert obligations": 2,
+            "update obligations": 1,
+            "insert events": 3,
+            "find obligations": 11,
+            "insert evidence": 1,
+            "insert memories": 7,
+            "insert agent_audit": 3,
+            "find memories": 2,
+            "aggregate memories": 1,
+            "aggregate order_memory": 3,
+            "find hl7_messages": 1,
+            "find ingest_jobs": 2,
+            "insert ingest_jobs": 1,
+            "findAndModify ingest_jobs": 1,
+            "update ingest_jobs": 11,
+            "find care_episodes": 3,
+            "find patients": 8,
+            "insert patients": 1,
+            "insert care_episodes": 1,
+            "find order_memory": 3,
+            "insert order_memory": 1,
+            "find checkpoints": 3,
+            "update checkpoints": 10,
+            "update checkpoint_writes": 9,
+            "find approvals": 4,
+            "find events": 3,
+            "update memories": 1,
+            "find checkpoint_writes": 1,
+            "find ingest_runs": 1,
+            "insert ingest_runs": 1,
+            "update hl7_messages": 1
+          },
+          "fhir_by_type": {
+            "Encounter": 1,
+            "Patient": 1,
+            "DiagnosticReport": 1,
+            "ServiceRequest": 1,
+            "DocumentReference": 1,
+            "Appointment": 1,
+            "MedicationRequest": 1
+          },
+          "fhir_ms_by_type": {
+            "Encounter": 1878.5,
+            "Patient": 1913.0,
+            "DiagnosticReport": 221.3,
+            "ServiceRequest": 469.5,
+            "DocumentReference": 319.9,
+            "Appointment": 396.2,
+            "MedicationRequest": 587.7
+          },
+          "outcome": "new_patient",
+          "detail": "7 structured follow-up(s), 1 from the discharge narrative",
+          "steps": [
+            {
+              "step": "pull",
+              "ms": 2591.1,
+              "mongo": 0,
+              "fhir": 7,
+              "mongo_by_command": {},
+              "mongo_by_target": {},
+              "fhir_by_type": {
+                "Encounter": 1,
+                "Patient": 1,
+                "DiagnosticReport": 1,
+                "ServiceRequest": 1,
+                "DocumentReference": 1,
+                "Appointment": 1,
+                "MedicationRequest": 1
+              },
+              "fhir_ms_by_type": {
+                "Encounter": 1878.5,
+                "Patient": 1913.0,
+                "DiagnosticReport": 221.3,
+                "ServiceRequest": 469.5,
+                "DocumentReference": 319.9,
+                "Appointment": 396.2,
+                "MedicationRequest": 587.7
+              }
+            },
+            {
+              "step": "identify",
+              "ms": 254.8,
+              "mongo": 13,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 6,
+                "insert": 5,
+                "update": 2
+              },
+              "mongo_by_target": {
+                "update patients": 1,
+                "update care_episodes": 1,
+                "insert events": 1,
+                "find obligations": 1,
+                "insert memories": 1,
+                "insert agent_audit": 1,
+                "find care_episodes": 1,
+                "find patients": 4,
+                "insert patients": 1,
+                "insert care_episodes": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "structured",
+              "ms": 338.4,
+              "mongo": 12,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 4,
+                "insert": 5,
+                "aggregate": 3
+              },
+              "mongo_by_target": {
+                "insert obligations": 1,
+                "find obligations": 1,
+                "insert evidence": 1,
+                "insert memories": 1,
+                "insert agent_audit": 1,
+                "aggregate order_memory": 3,
+                "find order_memory": 3,
+                "insert order_memory": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "narrative",
+              "ms": 1595.2,
+              "mongo": 56,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 26,
+                "insert": 7,
+                "aggregate": 1,
+                "update": 22
+              },
+              "mongo_by_target": {
+                "update care_episodes": 1,
+                "insert obligations": 1,
+                "update obligations": 1,
+                "insert events": 1,
+                "find obligations": 7,
+                "insert memories": 4,
+                "insert agent_audit": 1,
+                "find memories": 2,
+                "aggregate memories": 1,
+                "find care_episodes": 2,
+                "find patients": 4,
+                "find checkpoints": 3,
+                "update checkpoints": 10,
+                "update checkpoint_writes": 9,
+                "find approvals": 4,
+                "find events": 3,
+                "update memories": 1,
+                "find checkpoint_writes": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "verify",
+              "ms": 53.4,
+              "mongo": 6,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 3,
+                "insert": 3
+              },
+              "mongo_by_target": {
+                "insert events": 1,
+                "find obligations": 2,
+                "insert memories": 1,
+                "find ingest_runs": 1,
+                "insert ingest_runs": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            }
+          ]
+        },
+        {
+          "patient": 3,
+          "round": 1,
+          "ms": 8136.1,
+          "mongo": 98,
+          "fhir": 7,
+          "mongo_by_command": {
+            "find": 40,
+            "insert": 20,
+            "aggregate": 1,
+            "update": 36,
+            "findAndModify": 1
+          },
+          "mongo_by_target": {
+            "update patients": 1,
+            "update care_episodes": 2,
+            "insert obligations": 2,
+            "update obligations": 1,
+            "insert events": 3,
+            "find obligations": 11,
+            "insert evidence": 1,
+            "insert memories": 7,
+            "insert agent_audit": 3,
+            "find memories": 2,
+            "aggregate memories": 1,
+            "find hl7_messages": 1,
+            "find ingest_jobs": 2,
+            "insert ingest_jobs": 1,
+            "findAndModify ingest_jobs": 1,
+            "update ingest_jobs": 11,
+            "find care_episodes": 3,
+            "find patients": 8,
+            "insert patients": 1,
+            "insert care_episodes": 1,
+            "find order_memory": 1,
+            "find checkpoints": 3,
+            "update checkpoints": 10,
+            "update checkpoint_writes": 9,
+            "find approvals": 4,
+            "find events": 3,
+            "update memories": 1,
+            "find checkpoint_writes": 1,
+            "find ingest_runs": 1,
+            "insert ingest_runs": 1,
+            "update hl7_messages": 1
+          },
+          "fhir_by_type": {
+            "Encounter": 1,
+            "Patient": 1,
+            "DiagnosticReport": 1,
+            "ServiceRequest": 1,
+            "DocumentReference": 1,
+            "Appointment": 1,
+            "MedicationRequest": 1
+          },
+          "fhir_ms_by_type": {
+            "Encounter": 975.1,
+            "Patient": 1326.7,
+            "DiagnosticReport": 820.7,
+            "ServiceRequest": 1017.5,
+            "DocumentReference": 1071.2,
+            "Appointment": 1026.9,
+            "MedicationRequest": 1110.5
+          },
+          "outcome": "new_patient",
+          "detail": "5 structured follow-up(s), 1 from the discharge narrative",
+          "steps": [
+            {
+              "step": "pull",
+              "ms": 2515.3,
+              "mongo": 0,
+              "fhir": 7,
+              "mongo_by_command": {},
+              "mongo_by_target": {},
+              "fhir_by_type": {
+                "Encounter": 1,
+                "Patient": 1,
+                "DiagnosticReport": 1,
+                "ServiceRequest": 1,
+                "DocumentReference": 1,
+                "Appointment": 1,
+                "MedicationRequest": 1
+              },
+              "fhir_ms_by_type": {
+                "Encounter": 975.1,
+                "Patient": 1326.7,
+                "DiagnosticReport": 820.7,
+                "ServiceRequest": 1017.5,
+                "DocumentReference": 1071.2,
+                "Appointment": 1026.9,
+                "MedicationRequest": 1110.5
+              }
+            },
+            {
+              "step": "identify",
+              "ms": 383.0,
+              "mongo": 13,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 6,
+                "insert": 5,
+                "update": 2
+              },
+              "mongo_by_target": {
+                "update patients": 1,
+                "update care_episodes": 1,
+                "insert events": 1,
+                "find obligations": 1,
+                "insert memories": 1,
+                "insert agent_audit": 1,
+                "find care_episodes": 1,
+                "find patients": 4,
+                "insert patients": 1,
+                "insert care_episodes": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "structured",
+              "ms": 231.5,
+              "mongo": 6,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 2,
+                "insert": 4
+              },
+              "mongo_by_target": {
+                "insert obligations": 1,
+                "find obligations": 1,
+                "insert evidence": 1,
+                "insert memories": 1,
+                "insert agent_audit": 1,
+                "find order_memory": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "narrative",
+              "ms": 4009.6,
+              "mongo": 56,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 26,
+                "insert": 7,
+                "aggregate": 1,
+                "update": 22
+              },
+              "mongo_by_target": {
+                "update care_episodes": 1,
+                "insert obligations": 1,
+                "update obligations": 1,
+                "insert events": 1,
+                "find obligations": 7,
+                "insert memories": 4,
+                "insert agent_audit": 1,
+                "find memories": 2,
+                "aggregate memories": 1,
+                "find care_episodes": 2,
+                "find patients": 4,
+                "find checkpoints": 3,
+                "update checkpoints": 10,
+                "update checkpoint_writes": 9,
+                "find approvals": 4,
+                "find events": 3,
+                "update memories": 1,
+                "find checkpoint_writes": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            },
+            {
+              "step": "verify",
+              "ms": 291.9,
+              "mongo": 6,
+              "fhir": 0,
+              "mongo_by_command": {
+                "find": 3,
+                "insert": 3
+              },
+              "mongo_by_target": {
+                "insert events": 1,
+                "find obligations": 2,
+                "insert memories": 1,
+                "find ingest_runs": 1,
+                "insert ingest_runs": 1
+              },
+              "fhir_by_type": {},
+              "fhir_ms_by_type": {}
+            }
+          ]
+        }
+      ]
+    },
+    "reingest": {
+      "patient": 1,
+      "reingest": true,
+      "ms": 16042.2,
+      "mongo": 30,
+      "fhir": 7,
+      "mongo_by_command": {
+        "find": 12,
+        "insert": 2,
+        "aggregate": 2,
+        "update": 13,
+        "findAndModify": 1
+      },
+      "mongo_by_target": {
+        "update patients": 1,
+        "find obligations": 3,
+        "aggregate order_memory": 2,
+        "find hl7_messages": 1,
+        "find ingest_jobs": 2,
+        "insert ingest_jobs": 1,
+        "findAndModify ingest_jobs": 1,
+        "update ingest_jobs": 11,
+        "find care_episodes": 2,
+        "find patients": 1,
+        "find order_memory": 2,
+        "find ingest_runs": 1,
+        "insert ingest_runs": 1,
+        "update hl7_messages": 1
+      },
+      "fhir_by_type": {
+        "Encounter": 1,
+        "Patient": 1,
+        "DiagnosticReport": 1,
+        "ServiceRequest": 1,
+        "DocumentReference": 1,
+        "Appointment": 1,
+        "MedicationRequest": 1
+      },
+      "fhir_ms_by_type": {
+        "Encounter": 4513.6,
+        "Patient": 4587.5,
+        "DiagnosticReport": 1895.8,
+        "ServiceRequest": 4049.1,
+        "DocumentReference": 4061.7,
+        "Appointment": 3442.0,
+        "MedicationRequest": 6997.1
+      },
+      "outcome": "updated",
+      "detail": "0 structured follow-up(s), 5 already tracked",
+      "steps": [
+        {
+          "step": "pull",
+          "ms": 11905.8,
+          "mongo": 0,
+          "fhir": 7,
+          "mongo_by_command": {},
+          "mongo_by_target": {},
+          "fhir_by_type": {
+            "Encounter": 1,
+            "Patient": 1,
+            "DiagnosticReport": 1,
+            "ServiceRequest": 1,
+            "DocumentReference": 1,
+            "Appointment": 1,
+            "MedicationRequest": 1
+          },
+          "fhir_ms_by_type": {
+            "Encounter": 4513.6,
+            "Patient": 4587.5,
+            "DiagnosticReport": 1895.8,
+            "ServiceRequest": 4049.1,
+            "DocumentReference": 4061.7,
+            "Appointment": 3442.0,
+            "MedicationRequest": 6997.1
+          }
+        },
+        {
+          "step": "identify",
+          "ms": 140.3,
+          "mongo": 3,
+          "fhir": 0,
+          "mongo_by_command": {
+            "find": 2,
+            "update": 1
+          },
+          "mongo_by_target": {
+            "update patients": 1,
+            "find care_episodes": 1,
+            "find patients": 1
+          },
+          "fhir_by_type": {},
+          "fhir_ms_by_type": {}
+        },
+        {
+          "step": "structured",
+          "ms": 2872.6,
+          "mongo": 5,
+          "fhir": 0,
+          "mongo_by_command": {
+            "find": 3,
+            "aggregate": 2
+          },
+          "mongo_by_target": {
+            "find obligations": 1,
+            "aggregate order_memory": 2,
+            "find order_memory": 2
+          },
+          "fhir_by_type": {},
+          "fhir_ms_by_type": {}
+        },
+        {
+          "step": "narrative",
+          "ms": 4.1,
+          "mongo": 1,
+          "fhir": 0,
+          "mongo_by_command": {
+            "find": 1
+          },
+          "mongo_by_target": {
+            "find care_episodes": 1
+          },
+          "fhir_by_type": {},
+          "fhir_ms_by_type": {}
+        },
+        {
+          "step": "verify",
+          "ms": 74.0,
+          "mongo": 4,
+          "fhir": 0,
+          "mongo_by_command": {
+            "find": 3,
+            "insert": 1
+          },
+          "mongo_by_target": {
+            "find obligations": 2,
+            "find ingest_runs": 1,
+            "insert ingest_runs": 1
+          },
+          "fhir_by_type": {},
+          "fhir_ms_by_type": {}
+        }
+      ]
+    }
+  },
+  "poller": {
+    "followups": 150,
+    "ms": 7226.1,
+    "mongo": 79.0,
+    "fhir": 15.0,
+    "runs": [
+      {
+        "ms": 12399.9,
+        "mongo": 147,
+        "fhir": 15,
+        "mongo_by_command": {
+          "find": 81,
+          "insert": 33,
+          "update": 32,
+          "getMore": 1
+        },
+        "mongo_by_target": {
+          "update obligations": 16,
+          "insert events": 8,
+          "find obligations": 17,
+          "insert evidence": 8,
+          "insert approvals": 8,
+          "insert agent_audit": 8,
+          "find memories": 8,
+          "find patients": 16,
+          "find approvals": 24,
+          "find events": 8,
+          "update memories": 8,
+          "getMore": 1,
+          "find evidence": 8,
+          "update approvals": 8,
+          "insert ehr_poll_runs": 1
+        },
+        "fhir_by_type": {
+          "Encounter": 5,
+          "DiagnosticReport": 5,
+          "Appointment": 5
+        },
+        "fhir_ms_by_type": {
+          "Encounter": 1356.1,
+          "DiagnosticReport": 5941.0,
+          "Appointment": 4237.3
+        },
+        "checked": 150,
+        "resources_seen": 8,
+        "applied": 8,
+        "errors": 0
+      },
+      {
+        "ms": 2052.3,
+        "mongo": 11,
+        "fhir": 15,
+        "mongo_by_command": {
+          "find": 9,
+          "insert": 1,
+          "getMore": 1
+        },
+        "mongo_by_target": {
+          "find obligations": 1,
+          "getMore": 1,
+          "find evidence": 8,
+          "insert ehr_poll_runs": 1
+        },
+        "fhir_by_type": {
+          "Encounter": 5,
+          "DiagnosticReport": 5,
+          "Appointment": 5
+        },
+        "fhir_ms_by_type": {
+          "Encounter": 711.1,
+          "DiagnosticReport": 7128.3,
+          "Appointment": 4911.2
+        },
+        "checked": 150,
+        "resources_seen": 8,
+        "applied": 0,
+        "errors": 0
+      }
+    ]
+  },
+  "api": {
+    "GET /api/dashboard": {
+      "ms": 113.5,
+      "mongo": 7,
+      "bytes": 60210,
+      "mongo_by_command": {
+        "find": 6,
+        "getMore": 1
+      }
+    },
+    "GET /api/patients": {
+      "ms": 24.9,
+      "mongo": 3,
+      "bytes": 22132,
+      "mongo_by_command": {
+        "find": 3
+      }
+    },
+    "GET /api/patients/{id}/journey": {
+      "ms": 110.7,
+      "mongo": 11,
+      "bytes": 32919,
+      "mongo_by_command": {
+        "find": 11,
+        "getMore": 1
+      }
+    },
+    "GET /api/agent/approvals": {
+      "ms": 28.3,
+      "mongo": 2,
+      "bytes": 13334,
+      "mongo_by_command": {
+        "find": 2
+      }
+    },
+    "_dataset": {
+      "patients": 7,
+      "obligations": 164,
+      "evidence": 28,
+      "journey_patient_obligations": 8
+    }
+  }
+}
