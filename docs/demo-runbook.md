@@ -1,61 +1,96 @@
 # Demo runbook
 
-A one-page script for the hackathon demo: what to set up before, what to click
-and say during, and what to do when something breaks.
+Continuum is judged on **Statement Three: Finish the Job**. Every minute of the
+demo answers one of the brief's three questions. This page is what to set up,
+what to click and say, and what to do when something breaks.
 
-## The night before
+## Before the demo
 
-1. **Pull main and run the tests.** `cd backend && .venv/bin/python -m pytest -q` (all green).
-2. **Fill `.env`:** `MONGODB_URI` with `CONTINUUM_DB_MODE=atlas`, `LLM_PROVIDER`
-   and `LLM_API_KEY`, the ElevenLabs keys, and `LANGSMITH_API_KEY` (tracing
-   turns on when it is set).
-3. **Check the vector index.** Start the API and run `curl -s localhost:8000/api/health`.
-   You want `"vector_search": true`. If it's `false`, create the index from
-   [atlas.md](atlas.md) section 3 and wait for **Ready**.
-4. **Run the evaluation into LangSmith.**
-   `cd backend && .venv/bin/python -m evals.run --langsmith`. Open the
-   `continuum-care-loops` dataset, select both experiments and keep that
-   comparison tab open. With your LLM key set, the numbers come from the real
-   model; put them in your slides in place of the offline ones below if they differ.
-5. **Voice.** Start the tunnel, then point the agent at it:
-   `.venv/bin/python ../scripts/point_voice_agent.py https://<tunnel>.trycloudflare.com`
-   and restart the backend. Make one test call from the browser widget.
-6. **Phone (optional).** Import a Twilio number in ElevenLabs (Agents → Phone
-   numbers) and set `ELEVENLABS_PHONE_NUMBER_ID`. Without it, scheduled
-   check-ins become "call the patient" tasks and the browser widget is the live channel.
+1. **Backend up, everything green.** `curl -s localhost:8000/api/health` must show
+   `"database":"connected"`, `"vector_search":true`, `"embeddings":"voyageai:voyage-3.5"`,
+   `"llm":true`, `"voice_configured":true`, `"ehr_ingestion":true`, `"tracing":true`.
+2. **HAPI FHIR sandbox up** on `localhost:8080` with the three Synthea patients.
+   If `scripts/ehr_sandbox/.manifest.json` is missing:
+   `backend/.venv/bin/python scripts/ehr_sandbox/sandbox.py manifest`.
+3. **Patient 2 (Julius Jacobs) forgotten**, so the live discharge is a new patient:
+   `backend/.venv/bin/python scripts/ehr_sandbox/sandbox.py reset 2`.
+   Patient 1 (Brent Hickle) stays ingested: that is what taught `order_memory`.
+4. **Atlas open** in a second tab on these collections: `ingest_jobs`, `actions`,
+   `order_memory`, `obligations`. Judges want to see the state in the database.
+5. **LangSmith open** on project `continuum-hackathon`.
+6. Console signed in as the coordinator (`coordinator@continuum.demo`).
 
-## On the day (about 5 minutes)
+## The three answers (about 5 minutes)
 
-Open the console signed in as the coordinator. Reset with **Demo runner → Day 0**.
+### 1. "How does it tell an action that took effect from one that was only sent?"
 
-| Step | Click | Say |
-| --- | --- | --- |
-| Day 0 | Demo runner → Day 0, then open Michael Chen's journey | "A discharge summary becomes four tracked follow-ups, each linked to the sentence it came from." |
-| Day 3 | Day 3, expand the call transcript | "Michael says he saw his doctor. Continuum records it, but a patient's word isn't proof, so it stays open and asks the clinic to confirm." |
-| Day 7 | Day 7 | "The cardiology clinic confirms a date. That's evidence, so the status changes." |
-| Day 10 | Day 10, then Approvals | "Michael gives a date three days later. A system without memory would just believe him. Continuum remembers the clinic's date, keeps both, and asks a coordinator." |
-| Day 12 | Day 12, then the Inspector | "A dose question. The agent declines and routes it to a clinician. Here's the LangGraph checkpoint and the reasoning behind every step." |
-| Live | The voice call widget | Ask "When is my cardiology appointment?" live. |
-| Proof | LangSmith comparison tab | The numbers below. |
+| Click | Say |
+| --- | --- |
+| **Call Room** → start a call for Michael Chen (`simulated` mode needs no phone or tunnel). Keep **Actions** open beside it. | "We record that we *asked* ElevenLabs to call. It shows as *intended*, then *sent*. It only becomes *confirmed* when the transcript comes back. That's the evidence." |
+| Actions → **Attention** view | "If the process dies between the request and the reply, the action is *unknown*. We don't redial, because the call may have gone out. A human reconciles it. We never blindly retry." |
+| Patient journey, Day 3 transcript (Demo runner → Day 3) | "Michael says he saw his doctor. We write it down, but a patient's word isn't proof. The follow-up stays open until the clinic confirms." |
+
+Code: `backend/app/ledger.py`, `scheduler.py` (line ~443: interrupted call is not redialled), `calls.py`.
+
+### 2. "How does it resume after a crash without replaying its whole history?"
+
+Start the backend with the kill switch for this one:
+`INGEST_CRASH_AFTER_STEP=structured DEMO_MODE=true .venv/bin/uvicorn app.main:app --port 8000`
+
+| Click | Say |
+| --- | --- |
+| **Ingestion** page. Run `sandbox.py discharge 3` (Louie Armstrong). | "A discharge arrives from the hospital over HL7. The job runs pull → identify → structured → narrative → verify, and checkpoints each step in Atlas." |
+| The job shows `structured ✓` and the backend dies. The page says the lease expired, "it likely crashed mid-job". Show `ingest_jobs` in Atlas. | "Each step's output and its 'done' mark are one write. The job never claims it finished work whose result isn't saved." |
+| Restart the backend **without** the switch. | "On startup it picks up the job from the first unfinished step. Attempts says 2. The EHR record wasn't fetched again; the follow-ups weren't created twice." |
+
+Code: `backend/app/ingest/jobs.py`, `main.py` (resume at startup), `streams.py`, `agent/checkpoint.py`.
+
+### 3. "How does it adapt when a system's layout, fields or workflow changes underneath it?"
+
+| Click | Say |
+| --- | --- |
+| Run `sandbox.py discharge 2 --recode`. It prints what changed in the EHR first. | "This hospital switched code sets. The cardiology referral has a new display, the lab has a local code and new wording, and there's an order we've never seen." |
+| **Review** page for Julius Jacobs. | "The rules can't place any of these. Instead of dropping them or filing them as generic to-dos, it asks its own history." |
+| Point at each order's method | "*Known code*: same SNOMED code seen before. *Similar order, 0.81*: Atlas Vector Search over past orders, with Voyage embeddings, matched 'Renal function panel' to 'Basic metabolic panel'. *Unrecognized*: 'Wound check' goes to a coordinator." |
+| Confirm the Renal function panel. Show `order_memory` in Atlas. | "A coordinator's confirmation is learned. Next time that code arrives it's recognized exactly. Nothing was lost, and the uncertain ones went to a human." |
+
+Code: `backend/app/ingest/orders.py` (known code → Vector Search → word overlap), `routes/review.py`.
+
+### Close
+
+"Verified task state, change streams, Vector Search and LangGraph checkpoints, all in Atlas.
+Voice by ElevenLabs. Every agent run traced in LangSmith." Open the LangSmith tab.
 
 ## Numbers to quote
 
-From `python -m evals.run` (21 synthetic cases; Continuum vs. the same
-extractor with no memory and no loop engine):
+From `python -m evals.run` (21 synthetic cases; Continuum vs. the same extractor
+with no memory and no loop engine):
 
-- **100% vs 0%** of date contradictions caught and preserved.
 - **100% vs 15%** of follow-ups in the right state after several conversations.
 - **100% vs 2%** of open follow-ups still tracked after later calls.
 - **0** patient self-reports treated as proof (the baseline closed 40% of them).
-- **100%** extraction recall on six discharge summaries, the same as the
-  baseline. Extraction isn't the hard part; remembering is.
+- **100% vs 0%** of date contradictions caught and preserved.
+
+Why it matters to a clinic: Transitional Care Management billing (CPT 99495/99496,
+roughly $200–300 per patient) requires documented contact within 2 business days
+and a visit within 7 or 14 days. The action ledger is that documentation.
+
+## Rehearsal loop
+
+```
+sandbox.py reset 2                  # forget Jacobs and what the recoded codes taught
+sandbox.py discharge 2 --recode     # the adaptation demo
+sandbox.py reset 2                  # clean again
+```
 
 ## If something breaks
 
 | Problem | Fallback |
 | --- | --- |
-| Atlas unreachable | `CONTINUUM_DB_MODE=memory`, restart. The whole demo runs in memory. |
+| Atlas unreachable | `CONTINUUM_DB_MODE=memory`, restart. Everything runs in memory (no vector search; order matching uses word overlap). |
+| Voyage down or rate-limited | `EMBEDDING_PROVIDER=local`, restart. The indexes rebuild themselves at 384 dims. "Renal function panel" will come up *unrecognized* instead of a vector match; the human-review path still demos. |
 | LLM slow or down | Unset `LLM_API_KEY`. The deterministic extractor runs every day of the demo. |
-| Tunnel or voice fails | Skip the live call. Day 3, 10 and 12 already show call transcripts. |
+| Tunnel or voice fails | Use `simulated` call mode. Day 3, 10 and 12 already show call transcripts. |
 | A day runs out of order | Demo runner → Day 0 resets Michael, then replay. |
-| Thread stuck "awaiting approval" | Resolve it in Approvals, or replay Day 0. |
+| Recode demo shows *known_code* for the lab | A previous run taught it. `sandbox.py reset 2` and run again. |
+| HAPI patient already in Continuum | `sandbox.py reset N` before the discharge. |

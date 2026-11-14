@@ -4,6 +4,7 @@ import { api } from "../api";
 import type { AgentResult, Approval, ThreadState } from "../types";
 import { cx, formatDateTime, pct } from "../ui";
 import { ApprovalCard } from "./ApprovalCard";
+import { Markdown } from "./Markdown";
 
 interface ChatMessage {
   id: string;
@@ -27,16 +28,25 @@ export function ChatPanel({
   patientId,
   patientName,
   onResult,
+  title = "Coordinator chat",
+  subtitle = "Same LangGraph workflow as documents and voice · checkpointed in MongoDB",
 }: {
   patientId: string;
   patientName?: string;
   onResult?: (result: AgentResult, thread: ThreadState | null) => void;
+  title?: string;
+  subtitle?: string;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [thread, setThread] = useState<ThreadState | null>(null);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Pending approvals fold away so the conversation keeps the room. They open
+  // again on their own whenever a new approval arrives.
+  const [approvalsOpen, setApprovalsOpen] = useState(true);
+  const [expandedApproval, setExpandedApproval] = useState<string | null>(null);
+  const seenApprovals = useRef(0);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -161,14 +171,23 @@ export function ChatPanel({
   const lastResult = [...messages].reverse().find((message) => message.result)?.result;
   const started = messages.some((message) => message.role === "user");
 
+  useEffect(() => {
+    if (pendingApprovals.length > seenApprovals.current) {
+      setApprovalsOpen(true);
+      setExpandedApproval(pendingApprovals[0]?.id ?? null);
+    } else if (expandedApproval && !pendingApprovals.some((approval) => approval.id === expandedApproval)) {
+      setExpandedApproval(pendingApprovals[0]?.id ?? null);
+    }
+    seenApprovals.current = pendingApprovals.length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingApprovals.map((approval) => approval.id).join("|")]);
+
   return (
     <div className="chat">
       <div className="chat-head">
         <div>
-          <h3>Coordinator chat</h3>
-          <p className="muted">
-            Same LangGraph workflow as documents and voice · checkpointed in MongoDB
-          </p>
+          <h3>{title}</h3>
+          <p className="muted">{subtitle}</p>
         </div>
         <span className={cx("tag", paused ? "tag-amber" : "tag-green")}>
           <span className={cx("dot", paused ? "dot-amber" : "dot-green")} />
@@ -199,7 +218,7 @@ export function ChatPanel({
                 <strong>{message.role === "user" ? "You" : message.role === "agent" ? "Continuum" : "System"}</strong>
                 <small>{formatDateTime(message.at)}</small>
               </div>
-              <p>{message.text}</p>
+              {message.role === "user" ? <p>{message.text}</p> : <Markdown source={message.text} className="chat-md" />}
               {message.result?.retrieval?.counts ? (
                 <div className="chat-trace">
                   <span>{message.result.retrieval.counts.memories ?? 0} memories recalled</span>
@@ -227,12 +246,50 @@ export function ChatPanel({
       </div>
 
       {pendingApprovals.length > 0 ? (
-        <div className="chat-approvals">
-          <h4>Pending approvals</h4>
-          {pendingApprovals.map((approval) => (
-            <ApprovalCard key={approval.id} approval={approval} compact onResolved={loadThread} />
-          ))}
-        </div>
+        <details
+          className="chat-approvals"
+          open={approvalsOpen}
+          onToggle={(event) => setApprovalsOpen((event.currentTarget as HTMLDetailsElement).open)}
+        >
+          <summary>
+            <span className="chat-approvals-title">
+              <span className="dot dot-amber" />
+              {pendingApprovals.length === 1 ? "1 pending approval" : `${pendingApprovals.length} pending approvals`}
+            </span>
+            <span className="chat-approvals-hint">
+              {approvalsOpen ? "Hide" : "Show"} · <kbd className="kbd">y</kbd> approve <kbd className="kbd">x</kbd> reject
+            </span>
+          </summary>
+          <div className="chat-approvals-list">
+            {pendingApprovals.length === 1 ? (
+              <ApprovalCard approval={pendingApprovals[0]} compact onResolved={loadThread} />
+            ) : (
+              pendingApprovals.map((approval) => {
+                const expanded = expandedApproval === approval.id;
+                return (
+                  <details
+                    key={approval.id}
+                    className="chat-approval"
+                    open={expanded}
+                    onToggle={(event) => {
+                      const isOpen = (event.currentTarget as HTMLDetailsElement).open;
+                      setExpandedApproval((current) => (isOpen ? approval.id : current === approval.id ? null : current));
+                    }}
+                  >
+                    <summary>
+                      <span className={cx("tag", approval.mode === "interrupt" ? "tag-purple" : "tag-amber")}>
+                        {approval.mode === "interrupt" ? "Paused run" : "Queued"}
+                      </span>
+                      <span className="chat-approval-title">{approval.title}</span>
+                      <span className="chat-approval-kind">{approval.kind.replace(/_/g, " ")}</span>
+                    </summary>
+                    {expanded ? <ApprovalCard approval={approval} compact onResolved={loadThread} /> : null}
+                  </details>
+                );
+              })
+            )}
+          </div>
+        </details>
       ) : null}
 
       {lastResult?.proposals && lastResult.proposals.length > 0 ? (

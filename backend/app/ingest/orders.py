@@ -78,8 +78,23 @@ def ensure_order_index(db: Database) -> bool:
     try:
         if "order_memory" not in db.list_collection_names():
             db.create_collection("order_memory")
-        for idx in db.order_memory.list_search_indexes(INDEX_NAME):
-            return True
+        existing = next(iter(db.order_memory.list_search_indexes(INDEX_NAME)), None)
+        if existing:
+            fields = (existing.get("latestDefinition") or existing.get("definition") or {}).get("fields") or []
+            current = next((f.get("numDimensions") for f in fields if f.get("type") == "vector"), None)
+            if current == dims:
+                _reembed_orders(db, dims)
+                return True
+            # The embedding model changed (e.g. local 384 → Voyage 1024): the
+            # old index would silently match nothing. Rebuild it and re-embed.
+            log.info("Order index has %s dims but the model uses %s; rebuilding.", current, dims)
+            db.order_memory.drop_search_index(INDEX_NAME)
+            import time
+
+            for _ in range(30):  # Atlas drops asynchronously
+                if next(iter(db.order_memory.list_search_indexes(INDEX_NAME)), None) is None:
+                    break
+                time.sleep(2)
         from pymongo.operations import SearchIndexModel
 
         db.order_memory.create_search_index(
@@ -89,10 +104,33 @@ def ensure_order_index(db: Database) -> bool:
                 type="vectorSearch",
             )
         )
+        _reembed_orders(db, dims)
         return True
     except Exception as exc:  # pragma: no cover - tier/role dependent
         log.info("Order vector index not created: %s", exc)
         return False
+
+
+def _reembed_orders(db: Database, dims: int, batch: int = 64) -> int:
+    """Re-embed remembered orders whose vector came from another model."""
+    query = {"$or": [{"embedding": {"$exists": False}}, {"embedding": {"$not": {"$size": dims}}}]}
+    done = 0
+    while True:
+        rows = list(db.order_memory.find(query, {"_id": 0, "id": 1, "text": 1}).limit(batch))
+        if not rows:
+            break
+        vectors = _embed_many([r.get("text") or "" for r in rows])
+        updated = 0
+        for row, vector in zip(rows, vectors):
+            if vector:
+                db.order_memory.update_one({"id": row["id"]}, {"$set": {"embedding": vector}})
+                updated += 1
+        if not updated:
+            break  # embeddings unavailable; don't spin
+        done += updated
+    if done:
+        log.info("Re-embedded %d remembered orders (%d dims).", done, dims)
+    return done
 
 
 def _vector_ready(db: Database) -> bool:

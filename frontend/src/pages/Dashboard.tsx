@@ -2,14 +2,20 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { ActionList } from "../components/ActionLedger";
-import { ApprovalCard } from "../components/ApprovalCard";
 import { DemoRunner } from "../components/DemoRunner";
 import { ObligationCard } from "../components/ObligationCard";
 import { TcmWorklist } from "../components/TcmWorklist";
 import { Timeline } from "../components/Timeline";
 import { useApp } from "../state";
 import type { LedgerAction } from "../types";
-import { Card, Empty, ErrorBanner, formatDate, initials, RiskBadge, Spinner, cx } from "../ui";
+import { Card, Empty, ErrorBanner, formatDate, Spinner } from "../ui";
+
+/**
+ * Overview: the summary and demo page. The working queue is "Needs you"
+ * (/console). Following the design review, this page no longer repeats the
+ * KPI tiles, the approvals column or the caseload (both live in the queue and
+ * the rail); one sentence with linked counts says the same thing.
+ */
 
 export function Dashboard() {
   const { dashboard, config, loading, error, refresh, refreshKey, ops } = useApp();
@@ -41,69 +47,51 @@ export function Dashboard() {
             <span className="eyebrow-dot" />
             {config?.demo_today ? formatDate(config.demo_today) : "Today"} · Synthetic care panel
           </p>
-          <h1>Today’s follow-ups</h1>
-          <p className="page-sub">
-            {stats.open_obligations} open loops across {stats.patients} patients.{" "}
+          <h1>Overview</h1>
+          <p className="page-sub overview-summary">
+            <Link to="/patients">{stats.open_obligations} open loops</Link> across {stats.patients} patients.{" "}
             {stats.overdue > 0 ? (
               <>
-                <strong>{stats.overdue} overdue.</strong>{" "}
+                <Link to="/patients?filter=overdue" className="overview-danger">
+                  {stats.overdue} overdue
+                </Link>
+                .{" "}
               </>
             ) : null}
             {stats.pending_approvals > 0 ? (
               <>
-                <strong>
-                  {stats.pending_approvals} waiting
-                </strong>{" "}
-                for a coordinator decision.
+                <Link to="/approvals">{stats.pending_approvals} waiting</Link> for a decision.{" "}
               </>
-            ) : (
-              "No sensitive changes are waiting for review."
-            )}
+            ) : null}
+            {stats.conflicts > 0 ? (
+              <>
+                <Link to="/patients?filter=conflict">{stats.conflicts} with conflicting dates</Link>.{" "}
+              </>
+            ) : null}
+            {stats.awaiting_verification > 0 ? (
+              <>
+                <Link to="/patients?filter=verification">{stats.awaiting_verification} to verify</Link>.{" "}
+              </>
+            ) : null}
+            {stats.escalated > 0 ? (
+              <>
+                <Link to="/patients?filter=escalated">{stats.escalated} escalated</Link>.
+              </>
+            ) : null}
+            {stats.overdue === 0 && stats.pending_approvals === 0 ? "Nothing is overdue or waiting on you." : null}
           </p>
         </div>
         <div className="actions">
-          <Link className="btn" to="/patients">
-            View caseload
+          <Link className="btn" to="/patients/new">
+            Add a discharge
           </Link>
-          <Link className="btn btn-primary" to="/approvals">
-            Review approvals{stats.pending_approvals ? ` · ${stats.pending_approvals}` : ""}
+          <Link className="btn btn-primary" to="/console">
+            Open Needs you{stats.overdue + stats.pending_approvals ? ` · ${stats.overdue + stats.pending_approvals}` : ""}
           </Link>
         </div>
       </header>
 
       {error ? <ErrorBanner message={error} onRetry={refresh} /> : null}
-
-      <section className="metric-row" aria-label="Key indicators">
-        <Link to="/patients" className="metric">
-          <span className="metric-label">Open loops</span>
-          <strong className="metric-value">{stats.open_obligations}</strong>
-          <span className="metric-note">Across {stats.patients} synthetic patients</span>
-        </Link>
-        <Link to="/patients?filter=overdue" className={cx("metric", stats.overdue > 0 && "metric-danger")}>
-          <span className="metric-label">Overdue follow-ups</span>
-          <strong className="metric-value">{stats.overdue}</strong>
-          <span className="metric-note">{stats.overdue > 0 ? "Needs outreach today" : "Nothing past its due date"}</span>
-        </Link>
-        <Link to="/approvals" className={cx("metric", stats.pending_approvals > 0 && "metric-warn")}>
-          <span className="metric-label">Awaiting decision</span>
-          <strong className="metric-value">{stats.pending_approvals}</strong>
-          <span className="metric-note">Human review before closure</span>
-        </Link>
-        <div className="metric-minor">
-          <Link to="/patients?filter=conflict">
-            <span>Conflicts</span>
-            <b>{stats.conflicts}</b>
-          </Link>
-          <Link to="/patients?filter=verification">
-            <span>Verification</span>
-            <b>{stats.awaiting_verification}</b>
-          </Link>
-          <Link to="/patients?filter=escalated">
-            <span>Escalated</span>
-            <b>{stats.escalated}</b>
-          </Link>
-        </div>
-      </section>
 
       <TcmWorklist refreshKey={refreshKey} />
 
@@ -134,26 +122,6 @@ export function Dashboard() {
         </Card>
 
         <div className="stack">
-          <Card
-            title="Awaiting your decision"
-            subtitle="Sensitive changes pause until a coordinator reviews them"
-            action={
-              <Link to="/approvals" className="link-inline">
-                View all →
-              </Link>
-            }
-          >
-            {dashboard.pending_approvals.length === 0 ? (
-              <Empty>Nothing waiting. All sensitive changes have been reviewed.</Empty>
-            ) : (
-              <div className="stack-tight">
-                {dashboard.pending_approvals.slice(0, 2).map((approval) => (
-                  <ApprovalCard key={approval.id} approval={approval} compact />
-                ))}
-              </div>
-            )}
-          </Card>
-
           <Card
             title="Actions needing attention"
             subtitle="Sent but never confirmed, or interrupted mid-send"
@@ -187,35 +155,8 @@ export function Dashboard() {
               </Link>
             ) : null}
           </Card>
-
-          <Card title="Caseload" subtitle="Ranked by overdue and conflicting loops">
-            <div className="mini-patient-list">
-              {dashboard.patients.map((patient) => (
-                <Link key={patient.id} to={`/patients/${patient.id}`} className="mini-patient">
-                  <span className={`avatar ${patient.risk === "High" ? "avatar-high" : ""}`}>
-                    {patient.initials || initials(patient.name)}
-                  </span>
-                  <span className="mini-patient-main">
-                    <strong>{patient.name}</strong>
-                    <small>
-                      {patient.condition} · {patient.open_count} open
-                    </small>
-                  </span>
-                  <span className="mini-patient-badges">
-                    {patient.overdue_count > 0 ? <em className="badge badge-danger">{patient.overdue_count} overdue</em> : null}
-                    {patient.conflict_count > 0 ? <em className="badge badge-amber">{patient.conflict_count} conflict</em> : null}
-                    <RiskBadge risk={patient.risk} />
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </Card>
         </div>
       </div>
-
-      <Card title="Walk through the scenario" subtitle="One synthetic patient, five decisive moments. All data is synthetic.">
-        <DemoRunner onDone={refresh} showReset compact />
-      </Card>
 
       <Card
         title="Recent activity"
@@ -227,29 +168,15 @@ export function Dashboard() {
           </Link>
         }
       >
-        <Timeline events={dashboard.recent_events} limit={8} />
+        <Timeline events={dashboard.recent_events} limit={6} />
       </Card>
 
-      {config ? (
-        <section className="capability-strip" aria-label="System capabilities">
-          <div>
-            <strong>Memory</strong>
-            <span>Atlas Vector Search + lexical fallback</span>
-          </div>
-          <div>
-            <strong>Reasoning</strong>
-            <span>{config.llm_enabled ? config.model : "Deterministic extraction fallback"}</span>
-          </div>
-          <div>
-            <strong>Workflow</strong>
-            <span>LangGraph · checkpointed · interruptible</span>
-          </div>
-          <div>
-            <strong>Voice</strong>
-            <span>{config.voice_enabled ? "ElevenLabs agent connected" : "ElevenLabs not configured"}</span>
-          </div>
-        </section>
-      ) : null}
+      <Card
+        title="Walk through the scenario"
+        subtitle={`One synthetic patient, five decisive moments. ${config?.llm_enabled ? `Model: ${config.model}.` : "Deterministic extraction, no model key."} ${config?.voice_enabled ? "Voice agent connected." : "Voice agent not configured."}`}
+      >
+        <DemoRunner onDone={refresh} showReset compact />
+      </Card>
     </div>
   );
 }

@@ -10,6 +10,7 @@ coordinator resolves them.
 from __future__ import annotations
 
 import logging
+import re
 from functools import lru_cache
 from typing import Any, TypedDict
 
@@ -419,7 +420,10 @@ language in at most 60 words. Never give clinical advice."""
             # on reasoning; treat that as a failure so the template fallback runs.
             if not text.strip() or text == "None":
                 raise ValueError("model returned empty content")
-            text = " ".join(text.split())
+            # Tidy spacing but keep line breaks: the console renders the reply
+            # as Markdown, so lists and short paragraphs survive.
+            text = "\n".join(" ".join(line.split()) for line in text.splitlines()).strip()
+            text = re.sub(r"\n{3,}", "\n\n", text)
             if safety and safety not in text:
                 text = f"{text} {safety}".strip()
             spoken = _spoken_version(text, state, safety)

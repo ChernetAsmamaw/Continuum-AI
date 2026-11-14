@@ -171,8 +171,102 @@ def cmd_list(_args) -> None:
         print(f"[{p['n']}] {p['given']} {p['family']}  MRN {p['mrn']}  visit {p['visit_number']}  discharge {p['discharge']}  variant {p['variant']}")
 
 
+def cmd_manifest(_args) -> None:
+    """Rebuild .manifest.json from the sandbox patients already in the FHIR server."""
+    manifest = []
+    with httpx.Client(headers=FHIR_HEADERS, timeout=30) as client:
+        encounters = client.get(f"{FHIR_BASE}/Encounter", params={"identifier": "urn:continuum:sandbox:visit|", "_count": 50}).json()
+        for i, entry in enumerate(encounters.get("entry") or []):
+            enc = entry["resource"]
+            pid = enc["subject"]["reference"].split("/")[1]
+            patient = client.get(f"{FHIR_BASE}/Patient/{pid}").json()
+            orders = client.get(f"{FHIR_BASE}/ServiceRequest", params={"patient": pid, "_count": 50}).json()
+            order_ids = [e["resource"]["id"] for e in orders.get("entry") or []]
+            mrn = next(
+                (x["value"] for x in patient.get("identifier", []) if any(c.get("code") == "MR" for c in (x.get("type") or {}).get("coding", []))),
+                patient["id"],
+            )
+            name = patient["name"][0]
+            manifest.append({
+                "n": i + 1,
+                "fhir_id": patient["id"],
+                "mrn": mrn,
+                "given": " ".join(name.get("given") or []),
+                "family": name.get("family", ""),
+                "birth_date": patient.get("birthDate"),
+                "sex": (patient.get("gender") or "u")[0].upper(),
+                "phone": next((t["value"] for t in patient.get("telecom") or [] if t.get("system") == "phone"), ""),
+                "variant": 0 if any(o.endswith("-sr-culture") for o in order_ids) else 1,
+                "discharge": enc["period"]["end"][:10],
+                "visit_number": enc["identifier"][0]["value"],
+                "history_resources": None,
+            })
+    MANIFEST.write_text(json.dumps(manifest, indent=2))
+    print(f"Rebuilt manifest with {len(manifest)} patient(s):")
+    cmd_list(None)
+
+
+def _recode_orders(p: dict) -> None:
+    """Rewrite this patient's discharge orders the way a hospital that changed
+    its code set would: local categories, local codes, a new display, and one
+    order Continuum has never seen. The rules can't place these; order memory
+    (known code → Vector Search → word overlap) has to.
+    """
+    s = p["fhir_id"].replace("-", "")[:12]
+    with httpx.Client(headers=FHIR_HEADERS, timeout=30) as client:
+        cardio = client.get(f"{FHIR_BASE}/ServiceRequest/{s}-sr-cardio").json()
+        cardio["category"] = [{"coding": [{"system": "urn:hosp:local", "code": "CONS"}]}]
+        cardio.pop("performerType", None)
+        cardio["code"] = {"coding": [{"system": "http://snomed.info/sct", "code": "183519002", "display": "HF consult"}], "text": "HF consult"}
+        bmp = client.get(f"{FHIR_BASE}/ServiceRequest/{s}-sr-bmp").json()
+        bmp["category"] = [{"coding": [{"system": "urn:hosp:local", "code": "LBX"}]}]  # no display: nothing says "lab"
+        # Same test, new local code and wording: no rule keyword, almost no word
+        # overlap with "Basic metabolic panel (creatinine, electrolytes)", but
+        # the same meaning — only Vector Search over past orders can place it.
+        bmp["code"] = {"coding": [{"system": "urn:hosp:local", "code": "RFP-7"}], "text": "Renal function panel"}
+        bmp.pop("note", None)
+        wound = {
+            "resourceType": "ServiceRequest", "id": f"{s}-sr-wound", "status": "active", "intent": "order",
+            "category": [{"coding": [{"system": "urn:hosp:local", "code": "ZZ"}]}],
+            "code": {"text": "Wound check"},
+            "subject": cardio["subject"], "encounter": cardio["encounter"],
+            "authoredOn": cardio.get("authoredOn"), "requester": cardio.get("requester"),
+        }
+        for r in (cardio, bmp, wound):
+            response = client.put(f"{FHIR_BASE}/{r['resourceType']}/{r['id']}", json=r)
+            if response.status_code >= 400:
+                raise SystemExit(f"FHIR server rejected {r['id']} ({response.status_code}): {response.text[:300]}")
+    print("→ Recoded the EHR's orders before discharge:")
+    print(f"  {s}-sr-cardio  same SNOMED code, new display 'HF consult', local category CONS, no performer")
+    print(f"  {s}-sr-bmp     local code RFP-7 'Renal function panel', local category LBX, no note")
+    print(f"  {s}-sr-wound   new order 'Wound check', local category ZZ (never seen)")
+
+
+RECODED_KEYS = ["code:RFP-7", "code:BMP-7", "text:check wound"]  # what a --recode run can teach
+
+
+def cmd_reset(args) -> None:
+    """Forget patient N in Continuum (and anything a --recode run taught), so the
+    next discharge is a brand-new patient again. Needs the backend's .env."""
+    from app import repository as repo
+    from app.db import get_db
+
+    p = _pick(args.n)
+    db = get_db()
+    patient = db.patients.find_one({"$or": [{"ehr.fhir_id": p["fhir_id"]}, {"mrn": p["mrn"]}]}, {"_id": 0, "id": 1, "name": 1})
+    if patient:
+        repo.delete_patient(db, patient["id"])
+        print(f"Forgot {patient['name']} ({patient['id']}) and every derived record.")
+    else:
+        print(f"Patient #{args.n} is not in Continuum; nothing to forget.")
+    forgotten = db.order_memory.delete_many({"key": {"$in": RECODED_KEYS}}).deleted_count
+    print(f"Forgot {forgotten} remembered order(s) learned from recoded codes.")
+
+
 def cmd_discharge(args) -> None:
     p = _pick(args.n)
+    if getattr(args, "recode", False):
+        _recode_orders(p)
     discharge = date.fromisoformat(p["discharge"])
     message = build_a03(
         control_id=f"ADT{uuid.uuid4().hex[:10].upper()}",
@@ -225,13 +319,18 @@ def main() -> None:
     load.add_argument("--count", type=int, default=6)
     load.add_argument("--discharge", help="Discharge date (YYYY-MM-DD); default today")
     sub.add_parser("list", help="List loaded sandbox patients")
+    sub.add_parser("manifest", help="Rebuild .manifest.json from the patients already in the FHIR server")
     d = sub.add_parser("discharge", help="Send an ADT^A03 for patient N to Continuum")
     d.add_argument("n", type=int)
+    d.add_argument("--recode", action="store_true", help="First rewrite the EHR's orders with changed codes/categories (demo: adapting to a changed system)")
     r = sub.add_parser("results", help="Record final results / fulfilled visit for patient N in the EHR")
     r.add_argument("n", type=int)
     sub.add_parser("poll", help="Ask Continuum to poll the EHR now")
+    rs = sub.add_parser("reset", help="Forget patient N in Continuum so the next discharge starts fresh (demo rehearsals)")
+    rs.add_argument("n", type=int)
     args = parser.parse_args()
-    {"load": cmd_load, "list": cmd_list, "discharge": cmd_discharge, "results": cmd_results, "poll": cmd_poll}[args.cmd](args)
+    {"load": cmd_load, "list": cmd_list, "manifest": cmd_manifest, "discharge": cmd_discharge, "results": cmd_results,
+     "poll": cmd_poll, "reset": cmd_reset}[args.cmd](args)
 
 
 if __name__ == "__main__":
