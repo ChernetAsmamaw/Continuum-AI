@@ -2,34 +2,11 @@
 
 **An AI agent that finishes the 30 days after hospital discharge.**
 
-**Live:** https://continuum-production-531572b1.up.railway.app · **Try the console in one click:** [/demo](https://continuum-production-531572b1.up.railway.app/demo) (synthetic patients, no sign-up)
+**Live:** https://continuum-production-531572b1.up.railway.app · **Video:** [1-minute demo](https://youtu.be/Ap8-p4yq5gM) · **Try the console in one click:** [/demo](https://continuum-production-531572b1.up.railway.app/demo) (synthetic patients, no sign-up)
 
 Built for **Statement Three: Finish the Job** at MongoDB *Agents in Context*, Toronto 2026.
 
 ---
-
-## Technical demo
-
-- **Video (1 min):** [watch on YouTube](https://youtu.be/Ap8-p4yq5gM). A real phone call: Grace's missed post-discharge call tops the care team's queue, the voice agent calls her, verifies her identity and records her appointment for the clinic to verify.
-- **Live app:** [open the console in one click](https://continuum-production-531572b1.up.railway.app/demo), no sign-up, synthetic patients.
-
-**Try it in 3 minutes:**
-1. **Needs you** opens on the most overdue work, each item with the reason and one action.
-2. **Ask Continuum** (top right, or press `A`): "What needs me today?", "Who hasn't had bloodwork verified?", "Call Grace Thompson". Answers come back as cards; anything that changes data waits for **Confirm**.
-3. Open a patient → **Call Room** → **Simulated** to watch a full check-in call update the record live.
-4. **Actions** shows every call and message as `intended → sent → confirmed`.
-5. **Imports** shows EHR discharges as checkpointed jobs, including one that crashed and resumed.
-
-**Reproduce the three answers yourself:** [docs/demo-runbook.md](docs/demo-runbook.md) has the exact commands (crash an import mid-job and watch it resume, send a discharge with changed order codes, post a lab result and watch it close a follow-up).
-
-## What was hard
-
-- **Knowing what actually happened.** Every outbound action is written to Atlas *before* it's sent, with an idempotency key, and only confirmed by evidence (a transcript, a reply, a lab result). An interrupted call is marked `unknown`, never redialled.
-- **Surviving crashes.** Imports run as jobs with per-step checkpoints and leases; a dead worker's job is reclaimed and resumed at the next step. Change streams resume from a saved token.
-- **Real hospital plumbing.** HL7 v2 ADT^A03 over MLLP, FHIR R4 pulls, result polling, and matching renamed orders by meaning with Vector Search.
-- **A voice agent that can't lie.** Seven tools with signed requests, identity checked against name and date of birth, patient reports kept separate from proof, and no clinical advice.
-- **People stay in charge.** LangGraph `interrupt()` pauses sensitive changes, checkpointed in Atlas, until a coordinator decides.
-- **Tested:** 290+ automated tests, plus live runs against Atlas, a FHIR server and real phone calls.
 
 ## The problem
 
@@ -164,6 +141,29 @@ Tests: `cd backend && .venv/bin/python -m pytest -q`
 Diagrams are Excalidraw files in [`docs/diagrams/`](docs/diagrams): open any `.excalidraw` file on excalidraw.com to edit it.
 
 More detail: [docs/ingestion.md](docs/ingestion.md) · [docs/atlas.md](docs/atlas.md) · [docs/elevenlabs-setup.md](docs/elevenlabs-setup.md) · [docs/demo-runbook.md](docs/demo-runbook.md) · [docs/security-review.md](docs/security-review.md)
+
+## Technical demo
+
+- **Video (1 min):** [watch on YouTube](https://youtu.be/Ap8-p4yq5gM). A real phone call: Grace's missed post-discharge call tops the care team's queue, the voice agent calls her, verifies her identity and records her appointment for the clinic to verify.
+- **Live app:** [open the console in one click](https://continuum-production-531572b1.up.railway.app/demo), no sign-up, synthetic patients.
+
+**Try it in 3 minutes:**
+1. **Needs you** opens on the most overdue work, each item with the reason and one action.
+2. **Ask Continuum** (top right, or press `A`): "What needs me today?", "Who hasn't had bloodwork verified?", "Call Grace Thompson". Answers come back as cards; anything that changes data waits for **Confirm**.
+3. Open a patient → **Call Room** → **Simulated** to watch a full check-in call update the record live.
+4. **Actions** shows every call and message as `intended → sent → confirmed`.
+5. **Imports** shows EHR discharges as checkpointed jobs, including one that crashed and resumed.
+
+**Reproduce the three answers yourself:** [docs/demo-runbook.md](docs/demo-runbook.md) has the exact commands (crash an import mid-job and watch it resume, send a discharge with changed order codes, post a lab result and watch it close a follow-up).
+
+## What was hard
+
+- **Knowing what actually happened.** Every outbound action is written to Atlas *before* it's sent, with an idempotency key, and only confirmed by evidence (a transcript, a reply, a lab result). An interrupted call is marked `unknown`, never redialled.
+- **Surviving crashes.** Imports run as jobs with per-step checkpoints and leases; a dead worker's job is reclaimed and resumed at the next step. Change streams resume from a saved token.
+- **Real hospital plumbing.** HL7 v2 ADT^A03 over MLLP, FHIR R4 pulls, result polling, and matching renamed orders by meaning with Vector Search.
+- **A voice agent that can't lie.** Seven tools with signed requests, identity checked against name and date of birth, patient reports kept separate from proof, and no clinical advice.
+- **People stay in charge.** LangGraph `interrupt()` pauses sensitive changes, checkpointed in Atlas, until a coordinator decides.
+- **Tested:** 290+ automated tests, plus live runs against Atlas, a FHIR server and real phone calls.
 
 ---
 
