@@ -142,8 +142,15 @@ def build_tools(user: dict, today: date):
         pending, scheduled, patient_reported, verified, overdue, conflict, escalated. Use for
         questions like "who hasn't had bloodwork verified" or "which home-care visits are late"."""
         names = {p["id"]: p["name"] for p in db.patients.find({}, {"_id": 0, "id": 1, "name": 1})}
-        k = (keyword or "").lower().replace("-", " ").strip()
+        statuses = {"pending", "scheduled", "attempted", "patient_reported", "verified", "overdue", "cancelled",
+                    "escalated", "conflict", "late", "reported"}
+        words = (keyword or "").lower().replace("-", " ").replace("_", " ").split()
         wanted = {x.strip() for x in status.split(",") if x.strip()}
+        # Models often put a status in the keyword ("overdue bloodwork"): treat it as a filter.
+        for w in [w for w in words if w in statuses]:
+            words.remove(w)
+            wanted.add({"late": "overdue", "reported": "patient_reported"}.get(w, w))
+        k = " ".join(words)
         rows = []
         for d in db.obligations.find({}, {"_id": 0}):
             o = repo.present_obligation(d, today)

@@ -51,3 +51,10 @@ def test_chat_endpoint_requires_sign_in(client):
     r = client.post("/api/assistant/chat", json={"messages": [{"role": "user", "content": "hi"}]},
                     headers={"Authorization": ""})
     assert r.status_code == 401
+
+
+def test_status_words_in_keyword_become_filters(client):
+    tools = _tools()
+    by_status = json.loads(tools["find_followups"].invoke({"status": "overdue"}))["total"]
+    by_keyword = json.loads(tools["find_followups"].invoke({"keyword": "overdue"}))["total"]
+    assert by_keyword == by_status
