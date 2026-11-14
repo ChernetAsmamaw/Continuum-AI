@@ -152,7 +152,7 @@ def _window_label() -> str:
     return f"{settings.call_window_start_hour:02d}:00–{settings.call_window_end_hour:02d}:00 {settings.call_timezone}"
 
 
-def place_outbound_call(patient: dict, checkin: dict, open_items: list[dict]) -> dict:
+def place_outbound_call(patient: dict, checkin: dict, open_items: list[dict], call_session_id: str | None = None) -> dict:
     """Ask ElevenLabs to dial the patient. Returns {ok, conversation_id?, detail}."""
     number = _dialable(patient.get("phone"))
     if not number:
@@ -168,6 +168,9 @@ def place_outbound_call(patient: dict, checkin: dict, open_items: list[dict]) ->
                 "checkin_id": checkin["id"],
                 "checkin_reason": checkin.get("reason", ""),
                 "open_followups": "; ".join(o["description"] for o in open_items[:6]),
+                # Every agent tool binds this; ElevenLabs refuses to start the
+                # call if it is missing. "none" = not started from the Call Room.
+                "call_session_id": call_session_id or "none",
             }
         },
     }

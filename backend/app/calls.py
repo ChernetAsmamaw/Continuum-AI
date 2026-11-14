@@ -193,7 +193,8 @@ def _dial(db: Database, session: dict, patient: dict, phone: str | None) -> None
 
     target = dict(patient, phone=phone or patient.get("phone"))
     checkin = {"id": session["id"], "reason": "Coordinator-started check-in from the Call Room"}
-    result = place_outbound_call(target, checkin, repo.open_obligations(db, patient["id"], today=demo_today()))
+    result = place_outbound_call(target, checkin, repo.open_obligations(db, patient["id"], today=demo_today()),
+                                 call_session_id=session["id"])
     if result.get("ok"):
         connected(db, session["id"], conversation_id=result.get("conversation_id"), detail=f"Dialling {target.get('phone')}")
     else:
