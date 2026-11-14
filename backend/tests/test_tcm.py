@@ -105,3 +105,22 @@ def test_worklist_lists_patients_needing_contact(client):
     pid = _intake(client)
     lanes = client.get("/api/tcm/worklist").json()["lanes"]
     assert any(row["patient_id"] == pid for row in lanes["contact_due"])
+
+
+def test_reaching_the_patient_closes_the_missed_contact_task(client):
+    from app import repository as repo
+    from app import tcm
+    from app.db import get_db
+
+    db = get_db()
+    patient = db.patients.find_one({"id": "pat_amina"}, {"_id": 0})
+    episode = repo.get_active_episode(db, patient["id"])
+    task = repo.create_approval(db, {
+        "patient_id": patient["id"], "kind": "follow_up", "title": "TCM contact window missed",
+        "obligation_id": f"tcm:{episode['id']}", "rationale": "No contact", "proposed_changes": {"contact_due": "2026-11-02"},
+        "audience": "coordinator",
+    })
+    tcm.record_contact(db, patient_id=patient["id"], outcome="no_answer", channel="Voice call", actor="Test")
+    assert repo.get_approval(db, task["id"])["status"] == "pending"
+    tcm.record_contact(db, patient_id=patient["id"], outcome="reached", channel="Voice call", actor="Test")
+    assert repo.get_approval(db, task["id"])["status"] == "approved"

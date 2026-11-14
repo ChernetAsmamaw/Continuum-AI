@@ -102,8 +102,9 @@ def record_contact(
         existing = db.contact_attempts.find_one({"patient_id": patient_id, "ref": ref}, {"_id": 0})
         if existing:
             if existing["outcome"] != outcome and outcome in INTERACTIVE:
-                db.contact_attempts.update_one({"id": existing["id"]}, {"$set": {"outcome": outcome}})
+                db.contact_attempts.update_one({"id": existing["id"]}, {"$set": {"outcome": outcome, "interactive": True}})
                 existing["outcome"] = outcome
+                _close_contact_tasks(db, patient_id, existing.get("episode_id"), channel, actor)
             return existing
     from .db import demo_today
 
@@ -144,7 +145,23 @@ def record_contact(
             "actor": actor,
         },
     )
+    if doc["interactive"]:
+        _close_contact_tasks(db, patient_id, doc["episode_id"], channel, actor)
     return doc
+
+
+def _close_contact_tasks(db: Database, patient_id: str, episode_id: str | None, channel: str, actor: str) -> None:
+    """The patient was reached: the "post-discharge call" task is done, even if late.
+
+    The task is raised when the 2-business-day window passes with no contact;
+    without this it stayed in "Needs you" as overdue after the call happened.
+    """
+    query: dict = {"patient_id": patient_id, "status": "pending", "kind": "follow_up",
+                   "obligation_id": {"$regex": r"^tcm:"}}
+    if episode_id:
+        query["obligation_id"] = f"tcm:{episode_id}"
+    for task in db.approvals.find(query, {"_id": 0, "id": 1}):
+        repo.mark_approval_resolved(db, task["id"], True, actor, f"Patient reached by {channel.lower()}.")
 
 
 def list_contacts(db: Database, patient_id: str, episode_id: str | None = None) -> list[dict]:
