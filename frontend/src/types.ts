@@ -141,6 +141,10 @@ export interface PatientSummary extends Patient {
   pending_verification: number;
   next_due?: string | null;
   priority: Obligation[];
+  next_deadline?: { description: string; due_date: string; overdue: boolean } | null;
+  discharge_date?: string | null;
+  days_since_discharge?: number | null;
+  coordinator?: string | null;
 }
 
 export interface Evidence {

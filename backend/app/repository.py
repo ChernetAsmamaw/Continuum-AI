@@ -187,8 +187,19 @@ def find_patients_by_identity(
     return out[:5]
 
 
-def _patient_rows(patients: list[dict], obligations: list[dict]) -> list[dict]:
+def _patient_rows(
+    patients: list[dict],
+    obligations: list[dict],
+    episodes: dict[str, dict] | None = None,
+    today: date | None = None,
+) -> list[dict]:
     """Patient list rows from already-presented obligations (no queries)."""
+    from collections import Counter
+
+    from .db import demo_today
+
+    today = today or demo_today()
+    episodes = episodes or {}
     by_patient: dict[str, list[dict]] = {}
     for o in obligations:
         by_patient.setdefault(o.get("patient_id"), []).append(o)
@@ -217,9 +228,33 @@ def _patient_rows(patients: list[dict], obligations: list[dict]) -> list[dict]:
                     (o["due_date"] for o in open_items if o.get("due_date")), default=None
                 ),
                 "priority": sort_obligations(open_items)[:3],
+                **_deadline_and_owner(open_items, episodes.get(patient["id"]), today, Counter),
             }
         )
     out.sort(key=lambda p: (-p["overdue_count"], -p["conflict_count"], p["name"]))
+    return out
+
+
+def _deadline_and_owner(open_items: list[dict], episode: dict | None, today: date, counter) -> dict:
+    """Next deadline (what and when), days since discharge and the coordinator."""
+    dated = sorted((o for o in open_items if o.get("due_date")), key=lambda o: o["due_date"])
+    nxt = dated[0] if dated else None
+    discharge = parse_date((episode or {}).get("discharge_date"))
+    names = counter(((o.get("assignee") or {}).get("name") for o in open_items if (o.get("assignee") or {}).get("name")))
+    return {
+        "next_deadline": {"description": nxt["description"], "due_date": nxt["due_date"],
+                          "overdue": nxt.get("status") == ObligationStatus.overdue.value} if nxt else None,
+        "discharge_date": discharge.isoformat() if discharge else None,
+        "days_since_discharge": (today - discharge).days if discharge else None,
+        "coordinator": names.most_common(1)[0][0] if names else None,
+    }
+
+
+def _active_episodes(db: Database, patient_ids: list[str]) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for ep in db.care_episodes.find({"patient_id": {"$in": patient_ids}, "status": "active"},
+                                    {"_id": 0, "patient_id": 1, "discharge_date": 1}):
+        out[ep["patient_id"]] = ep
     return out
 
 
@@ -231,7 +266,8 @@ def _presented_obligations(db: Database, patient_ids: list[str] | None, today: d
 def list_patients(db: Database, today: date | None = None) -> list[dict]:
     # Two queries in all (was one per patient).
     patients = list(db.patients.find({}, {"_id": 0}))
-    return _patient_rows(patients, _presented_obligations(db, [p["id"] for p in patients], today))
+    ids = [p["id"] for p in patients]
+    return _patient_rows(patients, _presented_obligations(db, ids, today), _active_episodes(db, ids), today)
 
 
 def get_active_episode(db: Database, patient_id: str) -> dict | None:
@@ -1004,7 +1040,8 @@ def dashboard(db: Database, today: date | None = None, audience: str | None = No
     patient_docs = list(db.patients.find({}, {"_id": 0}))
     obligations = _presented_obligations(db, None, today)
     known = {p["id"] for p in patient_docs}
-    patients = _patient_rows(patient_docs, [o for o in obligations if o.get("patient_id") in known])
+    patients = _patient_rows(patient_docs, [o for o in obligations if o.get("patient_id") in known],
+                             _active_episodes(db, list(known)), today)
     open_items = [o for o in obligations if o["is_open"]]
     pending = list_approvals(db, status=ApprovalStatus.pending.value, audience=audience)
     return {

@@ -1,0 +1,54 @@
+/* Patients list: the proposal's calm table. Ink plus red, and red only means overdue. */
+.pt-page { display: flex; flex-direction: column; gap: 20px; max-width: 1080px; }
+.pt-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.pt-head h1 { margin: 0 0 6px; font-size: 26px; font-weight: 650; color: var(--ink); }
+.pt-head p { margin: 0; color: var(--muted); font-size: 14px; }
+.pt-add {
+  padding: 9px 16px; border: 1px solid var(--line-strong); border-radius: 6px;
+  background: var(--surface); color: var(--ink); font-weight: 600; font-size: 14px; text-decoration: none; white-space: nowrap;
+}
+.pt-add:hover { border-color: var(--ink); }
+
+.pt-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pt-search {
+  width: 300px; max-width: 100%; padding: 9px 12px; border: 1px solid var(--line-strong); border-radius: 6px;
+  background: var(--surface); color: var(--ink); font: inherit; font-size: 14px;
+}
+.pt-search:focus { outline: 2px solid var(--focus, var(--ink)); outline-offset: 1px; }
+.pt-filters { display: flex; gap: 2px; }
+.pt-filters button {
+  padding: 6px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-2);
+  font: inherit; font-size: 14px; cursor: pointer;
+}
+.pt-filters button:hover { color: var(--ink); }
+.pt-filters button.is-on { background: var(--paper-2); color: var(--ink); font-weight: 600; }
+
+.pt-table { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; }
+.pt-row {
+  display: grid; grid-template-columns: minmax(200px, 2.2fr) 1.3fr 0.9fr 2.4fr 1fr 1.1fr;
+  gap: 12px; align-items: center; padding: 12px 14px; border-top: 1px solid var(--line);
+  font-size: 14px; color: var(--ink); cursor: pointer;
+}
+.pt-row:hover, .pt-row:focus-visible { background: var(--surface-2); outline: none; }
+.pt-row-head {
+  border-top: 0; background: var(--paper-2); color: var(--ink-2); font-size: 13px; font-weight: 600; cursor: default;
+}
+.pt-row-head:hover { background: var(--paper-2); }
+.pt-name { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.pt-name b { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pt-row code, .pt-name code { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.pt-row > span:nth-child(3) code { color: var(--ink-2); font-size: 13px; }
+.pt-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; border: 1.5px solid var(--line-strong); align-self: center; }
+.pt-dot.is-red { background: var(--red); border-color: var(--red); }
+.pt-red { color: var(--red); }
+.pt-strong { font-weight: 650; }
+.pt-muted { color: var(--ink-2); }
+.pt-empty { color: var(--muted); padding: 24px 0; }
+
+@media (max-width: 860px) {
+  .pt-row { grid-template-columns: 1fr auto; row-gap: 4px; }
+  .pt-row-head { display: none; }
+  .pt-row > span:nth-child(2), .pt-row > span:nth-child(6) { display: none; }
+  .pt-row > span:nth-child(4) { grid-column: 1 / -1; color: var(--ink-2); }
+  .pt-search { width: 100%; }
+}

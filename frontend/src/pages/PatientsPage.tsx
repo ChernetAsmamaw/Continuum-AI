@@ -1,25 +1,37 @@
 import { useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "../auth";
 import { useApp } from "../state";
-import { Card, Empty, ErrorBanner, formatDate, initials, RiskBadge, Spinner, StatusPill } from "../ui";
+import type { PatientSummary } from "../types";
+import { ErrorBanner, Spinner } from "../ui";
+import "./patients.css";
 
-type Filter = "all" | "overdue" | "conflict" | "verification" | "escalated" | "high";
+type Filter = "all" | "mine" | "needs" | "overdue";
 
 const FILTERS: { id: Filter; label: string }[] = [
-  { id: "all", label: "All patients" },
+  { id: "all", label: "All" },
+  { id: "mine", label: "Mine" },
+  { id: "needs", label: "Needs you" },
   { id: "overdue", label: "Overdue" },
-  { id: "conflict", label: "Conflicts" },
-  { id: "verification", label: "Awaiting verification" },
-  { id: "escalated", label: "Escalated" },
-  { id: "high", label: "High risk" },
 ];
+
+const needsYou = (p: PatientSummary) =>
+  p.overdue_count + p.conflict_count + p.pending_verification + p.escalation_count;
+
+function shortDate(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(`${iso.slice(0, 10)}T12:00:00`);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
 export function PatientsPage() {
   const { dashboard, loading, error, refresh } = useApp();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const query = params.get("q") || "";
   const rawFilter = params.get("filter");
-  const filter: Filter = FILTERS.some((item) => item.id === rawFilter) ? (rawFilter as Filter) : "all";
+  const filter: Filter = FILTERS.some((f) => f.id === rawFilter) ? (rawFilter as Filter) : "all";
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params);
@@ -28,160 +40,103 @@ export function PatientsPage() {
     setParams(next, { replace: true });
   };
 
-  const patients = useMemo(() => {
-    const all = dashboard?.patients ?? [];
+  const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return all.filter((patient) => {
-      if (filter === "overdue" && patient.overdue_count === 0) return false;
-      if (filter === "conflict" && patient.conflict_count === 0) return false;
-      if (filter === "verification" && patient.pending_verification === 0) return false;
-      if (filter === "escalated" && patient.escalation_count === 0) return false;
-      if (filter === "high" && patient.risk !== "High") return false;
-      if (!needle) return true;
-      const haystack = [
-        patient.name,
-        patient.condition,
-        patient.mrn,
-        patient.caregiver || "",
-        ...patient.priority.map((obligation) => obligation.description),
-      ]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(needle);
-    });
-  }, [dashboard, filter, query]);
+    return (dashboard?.patients ?? [])
+      .filter((p) => {
+        if (filter === "mine" && p.coordinator !== user?.name) return false;
+        if (filter === "needs" && needsYou(p) === 0) return false;
+        if (filter === "overdue" && p.overdue_count === 0) return false;
+        if (!needle) return true;
+        return [p.name, p.mrn, p.condition].join(" ").toLowerCase().includes(needle);
+      })
+      .sort((a, b) => {
+        // Overdue first, then by the next deadline, then by name.
+        if (!!a.overdue_count !== !!b.overdue_count) return a.overdue_count ? -1 : 1;
+        const ad = a.next_deadline?.due_date || "9999";
+        const bd = b.next_deadline?.due_date || "9999";
+        return ad === bd ? a.name.localeCompare(b.name) : ad.localeCompare(bd);
+      });
+  }, [dashboard, filter, query, user]);
 
   if (!dashboard) {
     return loading ? <Spinner /> : <ErrorBanner message={error || "No patient data."} onRetry={refresh} />;
   }
 
-  const stats = dashboard.stats;
-
   return (
-    <div className="stack">
-      <header className="page-head">
+    <div className="pt-page">
+      <header className="pt-head">
         <div>
-          <p className="eyebrow">
-            <span className="eyebrow-dot" />
-            Care panel
-          </p>
           <h1>Patients</h1>
-          <p className="page-sub">
-            {dashboard.patients.length} patients · {stats.open_obligations} open loops ·{" "}
-            {stats.overdue > 0 ? <strong>{stats.overdue} overdue</strong> : "nothing overdue"}
-          </p>
+          <p>Everyone in the 30-day window after discharge. Sorted by the next deadline.</p>
         </div>
-        <div className="actions">
-          <Link className="btn btn-primary" to="/patients/new">
-            + New patient
-          </Link>
-          <Link className="btn" to="/audit">
-            Audit log
-          </Link>
-          <Link className="btn btn-primary" to="/approvals">
-            Approvals{stats.pending_approvals ? ` · ${stats.pending_approvals}` : ""}
-          </Link>
-        </div>
+        <Link className="pt-add" to="/patients/new">Add a discharge</Link>
       </header>
 
-      <Card className="filter-card">
-        <div className="filter-bar">
-          <div className="filter-search">
-            <input
-              value={query}
-              onChange={(event) => setParam("q", event.target.value)}
-              placeholder="Search by name, condition, MRN or obligation…"
-              aria-label="Filter patients"
-            />
-            {query ? (
-              <button className="link-button" onClick={() => setParam("q", "")}>
-                Clear
-              </button>
-            ) : null}
-          </div>
-          <div className="filter-chips">
-            {FILTERS.map((item) => (
-              <button
-                key={item.id}
-                className={`chip chip-button ${filter === item.id ? "chip-active" : ""}`}
-                onClick={() => setParam("filter", item.id === "all" ? "" : item.id)}
-                aria-pressed={filter === item.id}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </Card>
-
-      {patients.length === 0 ? (
-        <Empty>No patients match this filter.</Empty>
-      ) : (
-        <div className="patient-grid">
-          {patients.map((patient) => (
-            <article key={patient.id} className="patient-card">
-              <div className="patient-card-head">
-                <span className={`avatar avatar-large ${patient.risk === "High" ? "avatar-high" : ""}`}>
-                  {patient.initials || initials(patient.name)}
-                </span>
-                <div className="patient-card-title">
-                  <h2>
-                    <Link to={`/patients/${patient.id}`}>{patient.name}</Link>
-                  </h2>
-                  <p>
-                    {patient.age} years · {patient.condition} · MRN {patient.mrn}
-                  </p>
-                </div>
-                <RiskBadge risk={patient.risk} />
-              </div>
-
-              <div className="patient-stats">
-                <span>
-                  <b>{patient.open_count}</b> open
-                </span>
-                <span className={patient.overdue_count ? "text-danger" : ""}>
-                  <b>{patient.overdue_count}</b> overdue
-                </span>
-                <span className={patient.conflict_count ? "text-amber" : ""}>
-                  <b>{patient.conflict_count}</b> conflict
-                </span>
-                <span>
-                  <b>{patient.pending_verification}</b> to verify
-                </span>
-                <span>
-                  <b>{patient.escalation_count}</b> escalated
-                </span>
-              </div>
-
-              {patient.priority.length > 0 ? (
-                <ul className="patient-priority">
-                  {patient.priority.map((obligation) => (
-                    <li key={obligation.id}>
-                      <StatusPill status={obligation.status} derived={obligation.status_derived} />
-                      <span>{obligation.description}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="empty empty-small">No open obligations.</p>
-              )}
-
-              <div className="patient-card-foot">
-                <span className="patient-next">
-                  <span className="muted">Next due</span>
-                  <strong>{formatDate(patient.next_due)}</strong>
-                </span>
-                <div className="patient-card-actions">
-                  <Link className="btn btn-small" to={`/patients/${patient.id}`}>
-                    Open journey
-                  </Link>
-                  <Link className="btn btn-small btn-primary" to={`/patients/${patient.id}/agent`}>
-                    Ask agent
-                  </Link>
-                </div>
-              </div>
-            </article>
+      <div className="pt-tools">
+        <input
+          className="pt-search"
+          value={query}
+          onChange={(e) => setParam("q", e.target.value)}
+          placeholder="Search name, MRN or condition"
+          aria-label="Search patients"
+        />
+        <div className="pt-filters" role="tablist" aria-label="Filter patients">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              role="tab"
+              aria-selected={filter === f.id}
+              className={filter === f.id ? "is-on" : ""}
+              onClick={() => setParam("filter", f.id === "all" ? "" : f.id)}
+            >
+              {f.label}
+            </button>
           ))}
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="pt-empty">No patients match.</p>
+      ) : (
+        <div className="pt-table" role="table" aria-label="Patients">
+          <div className="pt-row pt-row-head" role="row">
+            <span role="columnheader">Patient</span>
+            <span role="columnheader">Condition</span>
+            <span role="columnheader">Since discharge</span>
+            <span role="columnheader">Next deadline</span>
+            <span role="columnheader">Needs you</span>
+            <span role="columnheader">Coordinator</span>
+          </div>
+          {rows.map((p) => {
+            const count = needsYou(p);
+            const overdue = p.overdue_count > 0;
+            return (
+              <div
+                key={p.id}
+                className="pt-row"
+                role="row"
+                tabIndex={0}
+                onClick={() => navigate(`/patients/${p.id}`)}
+                onKeyDown={(e) => e.key === "Enter" && navigate(`/patients/${p.id}`)}
+              >
+                <span role="cell" className="pt-name">
+                  <i className={overdue ? "pt-dot is-red" : "pt-dot"} aria-hidden />
+                  <b>{p.name}</b>
+                  <code title={p.mrn}>{p.mrn && p.mrn.length > 12 ? `${p.mrn.slice(0, 8)}…` : p.mrn}</code>
+                </span>
+                <span role="cell">{p.condition}</span>
+                <span role="cell"><code>{p.days_since_discharge != null ? `day ${p.days_since_discharge}` : "—"}</code></span>
+                <span role="cell" className={p.next_deadline?.overdue ? "pt-red" : ""}>
+                  {p.next_deadline ? `${p.next_deadline.description} · due ${shortDate(p.next_deadline.due_date)}` : "—"}
+                </span>
+                <span role="cell" className={overdue ? "pt-red pt-strong" : ""}>
+                  {count === 0 ? "—" : overdue ? `${count} · ${p.overdue_count} overdue` : count}
+                </span>
+                <span role="cell" className="pt-muted">{p.coordinator || "Unassigned"}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

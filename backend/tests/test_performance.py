@@ -308,9 +308,28 @@ def _reference_list_patients(db, today):
             "pending_verification": sum(o["status"] == "patient_reported" for o in open_items),
             "next_due": min((o["due_date"] for o in open_items if o.get("due_date")), default=None),
             "priority": repo.sort_obligations(open_items)[:3],
+            **_reference_deadline(db, patient["id"], open_items, today),
         })
     out.sort(key=lambda p: (-p["overdue_count"], -p["conflict_count"], p["name"]))
     return out
+
+
+def _reference_deadline(db, patient_id, open_items, today):
+    from collections import Counter
+
+    from app.util import parse_date
+
+    dated = sorted((o for o in open_items if o.get("due_date")), key=lambda o: o["due_date"])
+    episode = db.care_episodes.find_one({"patient_id": patient_id, "status": "active"}, {"_id": 0}) or {}
+    discharge = parse_date(episode.get("discharge_date"))
+    names = Counter((o.get("assignee") or {}).get("name") for o in open_items if (o.get("assignee") or {}).get("name"))
+    return {
+        "next_deadline": {"description": dated[0]["description"], "due_date": dated[0]["due_date"],
+                          "overdue": dated[0].get("status") == "overdue"} if dated else None,
+        "discharge_date": discharge.isoformat() if discharge else None,
+        "days_since_discharge": (today - discharge).days if discharge else None,
+        "coordinator": names.most_common(1)[0][0] if names else None,
+    }
 
 
 def test_list_patients_dashboard_and_journey_match_reference(client, db):
