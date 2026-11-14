@@ -40,7 +40,7 @@ LINKAGE = {
     "call_session_id": {"type": "string", "dynamic_variable": "call_session_id"},
     "conversation_id": {"type": "string", "dynamic_variable": "system__conversation_id"},
 }
-DYNAMIC_VARIABLES = {"dynamic_variable_placeholders": {"call_session_id": CALL_SESSION_PLACEHOLDER}}
+DYNAMIC_VARIABLES = {"dynamic_variable_placeholders": {"call_session_id": CALL_SESSION_PLACEHOLDER, "patient_name": "the patient"}}
 
 TOOLS = [
     {
@@ -117,7 +117,7 @@ BUILT_IN_TOOLS = {
 TURN = {
     "silence_end_call_timeout": 30.0,
     "turn_timeout": 7.0,
-    "soft_timeout_config": {"timeout_seconds": 2.5, "message": "One moment.",
+    "soft_timeout_config": {"timeout_seconds": 4.0, "message": "One moment.",
                             "additional_soft_timeout_messages": ["Just a second.", "Bear with me one moment."],
                             "randomize_fillers": True, "use_llm_generated_message": False},
 }
