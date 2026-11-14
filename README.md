@@ -10,7 +10,7 @@ Built for **Statement Three: Finish the Job** at MongoDB *Agents in Context*, To
 
 ## Technical demo
 
-- **Video (1 min):** a real phone call. Grace's missed post-discharge call tops the care team's queue, the voice agent calls her, verifies her identity and records her appointment for the clinic to verify. *(link on the submission page)*
+- **Video (1 min):** [watch on YouTube](https://youtu.be/Ap8-p4yq5gM). A real phone call: Grace's missed post-discharge call tops the care team's queue, the voice agent calls her, verifies her identity and records her appointment for the clinic to verify.
 - **Live app:** [open the console in one click](https://continuum-production-531572b1.up.railway.app/demo), no sign-up, synthetic patients.
 
 **Try it in 3 minutes:**
@@ -106,6 +106,23 @@ When a hospital sends an order under a new code or wording, Continuum matches it
 <p align="center"><img src="docs/diagrams/surviving-a-crash.svg" alt="A crashed import resumes from the next saved step" width="100%"></p>
 
 <p align="center"><img src="docs/diagrams/hospital-changes-codes.svg" alt="New hospital codes matched by meaning with Atlas Vector Search" width="100%"></p>
+
+## How it's built
+
+| Part | What it does | Code |
+|---|---|---|
+| **EHR ingestion** | HL7 ADT^A03 over MLLP or HTTP triggers a FHIR R4 pull; a checkpointed job builds follow-ups in five steps | `backend/app/ingest/` (`hl7.py`, `mllp.py`, `pull.py`, `builder.py`, `jobs.py`) |
+| **Result poller** | Asks the EHR for lab results and appointment changes behind open follow-ups and attaches them as evidence | `ingest/poller.py` |
+| **Order memory** | Matches unfamiliar order codes by meaning with Atlas Vector Search; remembers coordinator corrections | `ingest/orders.py` |
+| **Follow-up agent** | LangGraph graph: extract → retrieve memory → validate → propose → pause for approval, checkpointed in Atlas | `backend/app/agent/` (`graph.py`, `extraction.py`, `memory.py`, `checkpoint.py`) |
+| **Action ledger** | Every outbound action recorded before it's sent: `intended → sent → confirmed / unconfirmed / failed / unknown` | `ledger.py` |
+| **Automations** | A sweep every 5 minutes: due calls, overdue chasing, missing proof, EHR polling, re-paging, resuming imports | `scheduler.py` |
+| **30-day clock** | Contact within 2 business days, visit within 7 or 14 days, episode closes at 30 | `tcm.py`, `episodes.py` |
+| **Voice** | ElevenLabs agent with 7 signed tools, real calls through a Twilio number, transcripts back by webhook | `routes/voice.py`, `calls.py`, `scripts/create_voice_agent.py` |
+| **Text, email, portal check-ins** | A link to a check-in page gated by date of birth | `messaging.py`, `routes/portal.py` |
+| **Console assistant** | Tool-calling agent streamed over SSE; answers with cards, asks before acting | `assistant.py`, `frontend/src/assistant/` |
+| **Live console** | MongoDB change streams pushed to the browser over server-sent events | `streams.py`, `routes/live.py` |
+| **Data layer** | Atlas collections with `$jsonSchema` validators, indexes and two Vector Search indexes | `db.py`, `atlas_setup.py` |
 
 ## LangSmith
 
