@@ -285,3 +285,35 @@ def test_unresolved_callback_time_is_not_claimed_as_set(client, db):
     assert body["ok"] is True and body["resolved"] is False and body["scheduled_for"] is None
     assert "confirm the time" in body["spoken_response"]
     assert "set up a call for" not in body["spoken_response"]
+
+
+def test_date_alone_does_not_pick_the_wrong_follow_up():
+    from app.engine import rank_obligations
+
+    obligations = [
+        {"id": "o_home", "description": "Home-care assessment", "category": "home_care", "status": "pending",
+         "due_date": "2026-11-12", "keywords": ["home care", "nurse visit"], "owner": "Home care agency"},
+        {"id": "o_blood", "description": "Bloodwork (creatinine and electrolytes)", "category": "bloodwork",
+         "status": "verified", "due_date": "2026-11-18", "keywords": ["bloodwork", "blood work"], "owner": "Laboratory"},
+    ]
+    ranked = rank_obligations(obligations, "Patient said he did his blood work yesterday.", "bloodwork",
+                              reported_date="2026-11-13")
+    assert all(o["id"] != "o_home" for o, _, _ in ranked)
+
+
+def test_repeated_identical_voice_tool_call_is_not_recorded_twice(client):
+    from app.db import get_db
+
+    body = {"patient_id": MICHAEL, "item": "Medication list", "conversation_id": "conv_repeat_test"}
+    first = client.post("/api/voice/follow-up", json=body).json()
+    before = get_db().approvals.count_documents({"patient_id": MICHAEL})
+    second = client.post("/api/voice/follow-up", json=body).json()
+    assert second.get("repeat") is True
+    assert get_db().approvals.count_documents({"patient_id": MICHAEL}) == before
+    assert first.get("spoken_response") == second.get("spoken_response")
+
+
+def test_voice_tags_are_stripped_from_agent_lines():
+    from app.util import strip_voice_tags
+
+    assert strip_voice_tags("[happy] Thanks, Michael. [slow] Great.") == "Thanks, Michael. Great."

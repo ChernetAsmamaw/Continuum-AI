@@ -217,7 +217,9 @@ def connected(db: Database, session_id: str, *, conversation_id: str | None, det
 
 
 def transcript(db: Database, session_id: str, *, role: str, text: str) -> dict | None:
-    text = (text or "").strip()
+    from .util import strip_voice_tags
+
+    text = strip_voice_tags(text) if role == "agent" else (text or "").strip()
     if not text or role not in {"agent", "patient"}:
         return None
     return _push(db, session_id, {"kind": "transcript", "role": role, "text": text})

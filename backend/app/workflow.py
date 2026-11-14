@@ -842,6 +842,11 @@ def _spoken_time(value: str) -> str:
 def _extract_post_call(payload: dict) -> tuple[dict, list[dict], str | None, str | None]:
     data = payload.get("data") or payload
     transcript = data.get("transcript") or []
+    from .util import strip_voice_tags
+
+    for turn in transcript:
+        if isinstance(turn, dict) and (turn.get("role") or "") in {"agent", "assistant"} and turn.get("message"):
+            turn["message"] = strip_voice_tags(turn["message"])
     conversation_id = data.get("conversation_id") or data.get("conversationId")
     patient_id = (
         data.get("patient_id")

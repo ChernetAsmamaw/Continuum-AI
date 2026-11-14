@@ -74,14 +74,45 @@ def context(request: Request, patient_id: str) -> dict:
     return data
 
 
+# The voice LLM sometimes repeats a tool call with identical arguments while
+# waiting on a slow reply. Within one conversation, an identical repeat gets
+# the first call's result instead of writing a second report or request.
+_RECENT_CALLS: dict[str, tuple[float, dict]] = {}
+_RECENT_LOCK = __import__("threading").Lock()
+_REPEAT_WINDOW_SECS = 180
+
+
+def _repeat_key(patient_id: str, tool: str, payload: dict) -> str | None:
+    conversation = payload.get("conversation_id") or payload.get("conversationId")
+    if not conversation:
+        return None
+    args = {k: v for k, v in payload.items() if k not in {"call_session_id", "conversation_id", "conversationId"}}
+    return f"{conversation}|{patient_id}|{tool}|{json.dumps(args, sort_keys=True, default=str)}"
+
+
 def _call_event(patient_id: str, payload: dict, tool: str, summary: str, run) -> dict:
     """Run a voice tool and show it (with what it changed) on the patient's live call."""
+    import time
+
     from .. import calls
     from ..db import get_db
+
+    key = _repeat_key(patient_id, tool, payload)
+    now = time.monotonic()
+    if key:
+        with _RECENT_LOCK:
+            for k in [k for k, (at, _) in _RECENT_CALLS.items() if now - at > _REPEAT_WINDOW_SECS]:
+                _RECENT_CALLS.pop(k, None)
+            hit = _RECENT_CALLS.get(key)
+        if hit:
+            return {**hit[1], "repeat": True}
 
     db = get_db()
     before = calls.snapshot(db, patient_id)
     result = run()
+    if key and isinstance(result, dict):
+        with _RECENT_LOCK:
+            _RECENT_CALLS[key] = (now, result)
     try:
         calls.tool_event(db, patient_id=patient_id, tool=tool, summary=summary, before=before,
                          call_session_id=payload.get("call_session_id"),

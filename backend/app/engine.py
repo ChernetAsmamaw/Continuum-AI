@@ -125,6 +125,12 @@ def rank_obligations(
         if owner and owner not in {"care team"} and has_term(owner, text):
             score += 0.15
             reasons.append(f"names {o.get('owner')}")
+        # A matching date alone says nothing about *which* follow-up the
+        # patient means ("I did my bloodwork yesterday" must not land on a
+        # home-care visit that happened to be due the day before). Only count
+        # date closeness once the report is about this follow-up at all.
+        if score <= 0 and overlap < 0.15:
+            continue
         recorded = parse_date(o.get("confirmed_date") or o.get("due_date"))
         if reported and recorded:
             gap = abs((reported - recorded).days)

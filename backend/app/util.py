@@ -193,3 +193,11 @@ def resolve_when(value: str | None, today: date) -> tuple[datetime | None, date 
         return None, day
     dt = datetime(day.year, day.month, day.day, hour, 0, tzinfo=_call_zone())
     return dt, day
+
+
+_VOICE_TAG = __import__("re").compile(r"\[(?:[a-z]+(?:[ -][a-z]+){0,2})\]\s*")
+
+
+def strip_voice_tags(text: str) -> str:
+    """Remove expressive-voice cues like ``[happy]`` or ``[slow]`` from agent speech."""
+    return " ".join(_VOICE_TAG.sub("", text or "").split())
