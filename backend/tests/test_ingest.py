@@ -147,6 +147,44 @@ def test_new_order_after_discharge_is_picked_up_on_repull(client, db, ehr):
     assert db.obligations.find_one({"fhir_refs": "ServiceRequest/late-echo"})["category"] == "diagnostic_imaging"
 
 
+def test_narrative_restating_orders_under_other_categories_is_not_duplicated(client, db, ehr, monkeypatch):
+    """An LLM extractor names categories its own way ("primary_care",
+    "lab_review"); those restate EHR orders and must not become second items."""
+    from app import repository as repo
+    from app import workflow
+
+    def fake_llm_extraction(*, patient_id, title, text, source_ref=None, actor="x"):
+        for category, description in (
+            ("primary_care", "Follow up with the primary care physician"),
+            ("lab_review", "Review pending blood culture result"),
+            ("home_care", "Home care nursing assessment for daily weights"),
+        ):
+            repo.create_obligation(
+                db, {"patient_id": patient_id, "description": description, "category": category,
+                     "source": {"event_id": None, "label": title, "quote": description}},
+                actor, "extracted",
+            )
+        return {"status": "completed"}
+
+    monkeypatch.setattr(workflow, "ingest_document", fake_llm_extraction)
+    fake, patient, discharge = ehr
+    result = handle_hl7(_a03(patient, discharge, control_id="MSG-LLM-1"), client=fake.client())
+    assert result["outcome"] == "new_patient", result
+    obligations = list(db.obligations.find({"patient_id": result["patient_id"]}, {"_id": 0}))
+    open_items = [o for o in obligations if o["status"] != "cancelled"]
+    by_cat: dict[str, list[dict]] = {}
+    for o in open_items:
+        by_cat.setdefault(o["category"], []).append(o)
+    assert all(len(v) == 1 for v in by_cat.values()), {k: len(v) for k, v in by_cat.items()}
+    assert by_cat["family_physician"][0]["origin"] == "ehr_structured"
+    assert by_cat["pending_result"][0]["origin"] == "ehr_structured"
+    assert by_cat["home_care"][0]["origin"] == "ai_extracted"
+    retired = [o for o in obligations if o["status"] == "cancelled"]
+    assert {o["extracted_category"] for o in retired} == {"primary_care", "lab_review"}
+    assert all(o["duplicate_of"] for o in retired)
+    assert "1 from the discharge narrative" in result["detail"]
+
+
 def test_unknown_patient_returns_error_ack(ehr):
     fake, patient, discharge = ehr
     msg = _a03(patient, discharge).replace("MRN-4F083C", "NOPE-1")

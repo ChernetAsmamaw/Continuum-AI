@@ -492,9 +492,91 @@ def step_narrative(db: Database, packet: DischargePacket, state: dict, actor: st
     ai_created = [o["id"] for o in db.obligations.find({"patient_id": patient_id}, {"id": 1}) if o["id"] not in before]
     if ai_created:
         db.obligations.update_many({"id": {"$in": ai_created}}, {"$set": {"origin": "ai_extracted", "episode_id": episode_id}})
+    restated = retire_restated_orders(db, episode_id, ai_created, actor=actor)
+    ai_created = [i for i in ai_created if i not in {r["ai"] for r in restated}]
     linked = link_possible_duplicates(db, episode_id, ai_created, actor=actor)
     db.care_episodes.update_one({"id": episode_id}, {"$set": {"narrative_extracted_at": utcnow()}})
-    return {"ai_created": ai_created, "extraction_status": (extraction or {}).get("status"), "linked": linked}
+    return {"ai_created": ai_created, "extraction_status": (extraction or {}).get("status"), "linked": linked,
+            "restated": restated}
+
+
+# Categories the structured builder files orders under, beyond CATEGORY_RULES.
+STRUCTURED_ONLY_CATEGORIES = {"pending_result", "medication_reconciliation"}
+# Several distinct follow-ups of these kinds can coexist (two tests, two scans).
+MULTI_INSTANCE = {"pending_result", "bloodwork", "diagnostic_imaging"}
+
+
+def canonical_category(category: str | None, text: str) -> str | None:
+    """Map a narrative follow-up's category onto the vocabulary the orders use.
+
+    An LLM extractor does not always use the rule categories ("primary_care",
+    "lab_review"), and the engine de-duplicates by exact category, so a
+    narrative item can restate an EHR order under another name.
+    """
+    known = {r["category"] for r in CATEGORY_RULES} | STRUCTURED_ONLY_CATEGORIES
+    if category in known:
+        return category
+    low = f"{(category or '').replace('_', ' ')} {text}".lower()
+    if "pending" in low and "result" in low:
+        return "pending_result"
+    if "reconcil" in low:
+        return "medication_reconciliation"
+    return _category(low) or category
+
+
+def _order_text(o: dict) -> str:
+    return f"{o.get('description', '')} {(o.get('source') or {}).get('quote') or ''}"
+
+
+def retire_restated_orders(db: Database, episode_id: str, ai_ids: list[str], *, actor: str = ACTOR) -> list[dict]:
+    """Cancel narrative follow-ups that restate an EHR order already tracked.
+
+    Only settled orders count (recognized, or confirmed by a coordinator); a
+    narrative item that may match an unsettled order is left to
+    ``link_possible_duplicates`` and the coordinator. Kept narrative items get
+    the canonical category so later documents de-duplicate against them.
+    Nothing is deleted: a restated item is cancelled with a reason and
+    ``duplicate_of``, so the audit trail still shows what the narrative said.
+    """
+    if not ai_ids:
+        return []
+    from ..util import similarity
+
+    structured = [
+        o for o in db.obligations.find({"episode_id": episode_id, "origin": "ehr_structured"}, {"_id": 0})
+        if not (o.get("classified_by") and not o["classified_by"].get("confirmed"))
+    ]
+    retired: list[dict] = []
+    for ai in db.obligations.find({"id": {"$in": ai_ids}}, {"_id": 0}):
+        text = _order_text(ai)
+        category = canonical_category(ai.get("category"), text)
+        candidates = [o for o in structured if o.get("category") == category]
+        match = None
+        if len(candidates) == 1 and (category not in MULTI_INSTANCE or similarity(text, _order_text(candidates[0])) >= 0.15):
+            match = candidates[0]
+        elif len(candidates) > 1:
+            score, best = max(((similarity(text, _order_text(o)), o) for o in candidates), key=lambda x: x[0])
+            match = best if score >= 0.25 else None
+        if category != ai.get("category"):
+            db.obligations.update_one(
+                {"id": ai["id"]}, {"$set": {"category": category, "extracted_category": ai.get("category")}}
+            )
+            ai = {**ai, "category": category}
+        if not match:
+            continue
+        label = match.get("description", "EHR order")
+        db.obligations.update_one({"id": ai["id"]}, {"$set": {"duplicate_of": match["id"]}})
+        repo.set_obligation_status(
+            db,
+            ai,
+            ObligationStatus.cancelled.value,
+            actor,
+            f"The discharge narrative restates EHR order “{label}” [{match['id']}], already tracked "
+            "from structured data.",
+            next_action=f"Tracked as “{label}”",
+        )
+        retired.append({"ai": ai["id"], "order": match["id"], "category": category})
+    return retired
 
 
 def _days_apart(a: str | None, b: str | None) -> int | None:
