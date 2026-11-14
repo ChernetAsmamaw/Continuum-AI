@@ -6,7 +6,8 @@ Creates the seven webhook tools pointing at <public-url>/api/voice/*, each
 sending the x-continuum-token header, creates the agent with the prompt in
 scripts/voice_agent_prompt.txt, attaches the tools and writes
 ELEVENLABS_AGENT_ID to .env. Run scripts/point_voice_agent.py afterwards for
-the post-call webhook (and whenever the public URL changes).
+the post-call webhook (and whenever the public URL changes); it creates the
+workspace webhook and also sets it as this agent's post-call webhook override.
 """
 
 from __future__ import annotations
@@ -29,7 +30,17 @@ FIRST_MESSAGE = (
 )
 
 S = lambda d: {"type": "string", "description": d}  # noqa: E731
-CALL_SESSION = {"type": "string", "dynamic_variable": "call_session_id"}
+# Linkage params on every POST tool, filled by ElevenLabs, never by the LLM.
+# call_session_id is ours (passed as a dynamic variable when the console starts
+# a call); its placeholder keeps calls without one (tests, inbound) from being
+# rejected for a missing variable. system__conversation_id is built in.
+# (ElevenLabs rejects a description alongside dynamic_variable.)
+CALL_SESSION_PLACEHOLDER = "none"
+LINKAGE = {
+    "call_session_id": {"type": "string", "dynamic_variable": "call_session_id"},
+    "conversation_id": {"type": "string", "dynamic_variable": "system__conversation_id"},
+}
+DYNAMIC_VARIABLES = {"dynamic_variable_placeholders": {"call_session_id": CALL_SESSION_PLACEHOLDER}}
 
 TOOLS = [
     {
@@ -85,8 +96,9 @@ TOOLS = [
     },
     {
         "name": "request_callback", "path": "/api/voice/checkin", "method": "POST",
-        "description": "Schedule a callback: the care team will call the patient at a time they choose. This is "
-                       "confirmed immediately on the call.",
+        "description": "Schedule a callback: the care team will call the patient at a time they choose. Only tell "
+                       "the patient it is set after this returns ok, using its spoken_response; if the time could "
+                       "not be resolved, say the care team will confirm the time.",
         "body": {"patient_id": S("Verified patient_id"), "when": S("When to call back, in the patient's words"),
                  "reason": S("What the callback is about")},
         "required": ["patient_id", "when"],
@@ -129,7 +141,7 @@ def main(base: str) -> None:
             schema["path_params_schema"] = t["path_params"]
         if t.get("body"):
             props = dict(t["body"])
-            props["call_session_id"] = CALL_SESSION
+            props.update(LINKAGE)
             schema["request_body_schema"] = {"type": "object", "description": t["description"],
                                              "properties": props, "required": t.get("required", [])}
         cfg = {"type": "webhook", "name": t["name"], "description": t["description"], "api_schema": schema}
@@ -143,7 +155,7 @@ def main(base: str) -> None:
             "agent": {
                 "first_message": FIRST_MESSAGE,
                 "language": "en",
-                "dynamic_variables": {"dynamic_variable_placeholders": {"call_session_id": ""}},
+                "dynamic_variables": DYNAMIC_VARIABLES,
                 "prompt": {"prompt": PROMPT.read_text().strip(), "tool_ids": tool_ids},
             },
         },

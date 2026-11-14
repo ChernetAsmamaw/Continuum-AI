@@ -93,3 +93,16 @@ def test_call_with_no_conversation_fails_its_ledger_entry(client, db, monkeypatc
     session = client.post("/api/calls", json={"patient_id": MICHAEL, "mode": "browser"}).json()["session"]
     client.post(f"/api/calls/{session['id']}/end")
     assert db.actions.find_one({"key": f"call:{session['id']}"})["status"] == "failed"
+
+
+def test_tool_event_falls_back_to_live_call_for_placeholder_session(client):
+    from app import calls
+    from app.db import get_db
+
+    db = get_db()
+    session = calls.start(db, patient_id=MICHAEL, mode="simulated", phone=None, actor="Test")
+    before = calls.snapshot(db, MICHAEL)
+    event = calls.tool_event(db, patient_id=MICHAEL, tool="report", summary="Recorded", before=before,
+                             call_session_id="none", detail={})
+    assert event is not None
+    assert any(e.get("tool") == "report" for e in calls.get_session(db, session["id"])["events"])

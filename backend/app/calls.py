@@ -225,7 +225,10 @@ def transcript(db: Database, session_id: str, *, role: str, text: str) -> dict |
 def tool_event(db: Database, *, patient_id: str, tool: str, summary: str, before: dict, call_session_id: str | None = None,
                detail: dict | None = None) -> dict | None:
     """Record a voice tool call (and what it changed) on the patient's live call, if any."""
-    session = get_session(db, call_session_id) if call_session_id else active_session(db, patient_id)
+    # ElevenLabs fills call_session_id with a placeholder ("none") when the call
+    # was not started from the Call Room; fall back to the patient's live call.
+    session = get_session(db, call_session_id) if call_session_id and call_session_id != "none" else None
+    session = session or active_session(db, patient_id)
     if not session or session["patient_id"] != patient_id:
         return None
     effects = diff(db, before, snapshot(db, patient_id))
