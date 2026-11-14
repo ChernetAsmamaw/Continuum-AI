@@ -96,7 +96,17 @@ Every agent run is traced to the `continuum-hackathon` project: the follow-up ag
 
 ## Tech stack
 
-MongoDB Atlas (Vector Search, change streams, schema validation) · LangGraph + LangChain · Gemini (any provider by API key) · Voyage AI embeddings · ElevenLabs Conversational AI · Twilio · LangSmith · FastAPI · React + assistant-ui · HL7v2 / FHIR R4 · Railway
+- **MongoDB Atlas**: Vector Search, change streams, schema validation
+- **LangGraph + LangChain**: the agents and their checkpoints
+- **Gemini**: the LLM (any provider works with an API key)
+- **Voyage AI**: embeddings
+- **ElevenLabs Conversational AI**: the voice agent
+- **Twilio**: the phone number for real calls
+- **LangSmith**: tracing
+- **FastAPI**: the backend
+- **React + assistant-ui**: the console and its assistant
+- **HL7v2 / FHIR R4**: the hospital's record system
+- **Railway**: hosting
 
 ## Run it locally
 
