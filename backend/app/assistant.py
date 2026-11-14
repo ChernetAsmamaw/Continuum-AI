@@ -54,8 +54,10 @@ How to work:
 - You coordinate care; you never give clinical advice (diagnosis, medication,
   dosing, symptoms). If asked, say a clinician should answer and offer to
   find or escalate the relevant follow-up.
-- Patient-reported updates are not verified until evidence arrives; describe
-  them that way."""
+- Use each follow-up's real status word. Only call something "overdue" when
+  its status is overdue. "patient_reported" means the patient says it's done
+  but there's no proof yet; "conflict" means two dates disagree. Never group
+  these under "overdue"."""
 
 
 def _patient_ref(db, ref: str) -> dict | None:
