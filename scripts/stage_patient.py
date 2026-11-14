@@ -1,6 +1,6 @@
 """Create (or reset) Grace Thompson, the stage-demo patient.
 
-The story: Grace was discharged four days ago and nobody has reached her, so
+The story: Grace was discharged two weeks ago and nobody has reached her, so
 her post-discharge call is overdue and sits at the top of "Needs you". The
 coordinator clicks Call Grace; on the call she asks to move her family
 physician visit, and the reschedule request comes back to "Needs you" for a
@@ -50,7 +50,7 @@ def main(phone: str) -> None:
         "synthetic": True,
         "created_at": utcnow(),
     }, upsert=True)
-    discharge = today - timedelta(days=4)
+    discharge = today - timedelta(days=16)  # contact window closed ~12 days ago: top of "Needs you"
     db.care_episodes.replace_one({"id": EPISODE_ID}, {
         "id": EPISODE_ID, "patient_id": PATIENT_ID, "admission_date": _iso(discharge - timedelta(days=3)),
         "discharge_date": _iso(discharge), "reason": "Heart failure", "status": "active",
