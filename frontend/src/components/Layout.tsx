@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
+import { CallBar, useCall } from "../calls";
 import { useApp } from "../state";
 import { cx, initials } from "../ui";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
@@ -146,6 +147,7 @@ function sectionLabel(pathname: string): string {
 export function Layout() {
   const { config, dashboard, error, toast, loading, ops } = useApp();
   const { user, logout } = useAuth();
+  const { live: onCall } = useCall();
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -377,7 +379,7 @@ export function Layout() {
         </div>
       </aside>
 
-      <div className="main">
+      <div className={cx("main", onCall && "main-on-call")}>
         <header className="topbar">
           <button
             className="menu-button"
@@ -446,6 +448,7 @@ export function Layout() {
       </div>
 
       {menuOpen ? <button className="scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} /> : null}
+      <CallBar />
       {toast ? (
         <div className="toast" role="status">
           {toast}

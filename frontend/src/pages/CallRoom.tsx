@@ -1,18 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { api } from "../api";
+import { callPath, elapsed, isLiveCall, useCall } from "../calls";
 import { useApp } from "../state";
-import type { CallBrief, CallEffect, CallEvent, CallMode, CallModes, CallSession, LedgerAction } from "../types";
-import { Card, ErrorBanner, Spinner, cx, statusLabel } from "../ui";
+import type { CallBrief, CallEffect, CallEvent, CallMode, CallModes, CallSession, LedgerAction, Patient } from "../types";
+import { Card, ErrorBanner, Spinner, cx, formatDate, initials, statusLabel } from "../ui";
 
 const MODE_COPY: Record<CallMode, { title: string; detail: string }> = {
   simulated: { title: "Simulated", detail: "A scripted call built from this patient's open follow-ups. Uses the real tools. No keys needed." },
   browser: { title: "Browser", detail: "Talk to the ElevenLabs agent here. You play the patient." },
   phone: { title: "Phone", detail: "ElevenLabs dials a real number. Answer it and play the patient." },
 };
-
-const LIVE = new Set(["preparing", "live"]);
 
 function covered(item: CallBrief["agenda"][number], events: CallEvent[]): boolean {
   const tools = events.filter((e) => e.kind === "tool");
@@ -51,79 +49,145 @@ function effectLine(e: CallEffect): { title: string; body: string; tone: string 
   }
 }
 
-function elapsed(from?: string, to?: string): string {
-  if (!from) return "0:00";
-  const secs = Math.max(0, Math.round(((to ? Date.parse(to) : Date.now()) - Date.parse(from)) / 1000));
-  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+function telHref(phone: string): string | null {
+  const digits = phone.replace(/[^\d+]/g, "");
+  return digits.length >= 7 ? `tel:${digits}` : null;
 }
 
-function CallRoomInner() {
+/** Who you are calling, in one glance: the details a coordinator otherwise opens the record for. */
+function WhoCard({ patient, brief, phone }: { patient: Patient | null; brief: CallBrief; phone?: string | null }) {
+  const name = patient?.name || brief.patient_name || "Patient";
+  const number = phone || brief.phone || patient?.phone;
+  const tel = number ? telHref(number) : null;
+  const prefs = patient?.preferences || {};
+  const caregiver = patient?.caregiver_contact;
+  return (
+    <section className="call-who" aria-label="Who you are calling">
+      <span className={cx("avatar call-who-avatar", patient?.risk === "High" && "avatar-high")}>{patient?.initials || initials(name)}</span>
+      <div className="call-who-main">
+        <h2>
+          <Link to={`/patients/${brief.patient_id}`}>{name}</Link>
+          {patient?.pronouns ? <small>{patient.pronouns}</small> : null}
+        </h2>
+        <p className="call-who-meta">
+          {patient ? `${patient.age} · ${patient.condition} · MRN ${patient.mrn}` : "Loading the record…"}
+        </p>
+        <dl className="call-who-facts">
+          <div>
+            <dt>Verify with</dt>
+            <dd>{patient?.birth_date ? `DOB ${formatDate(patient.birth_date)}` : "Phone on file"}</dd>
+          </div>
+          <div>
+            <dt>Language</dt>
+            <dd>
+              {brief.language || prefs.language || "English"}
+              {prefs.interpreter_needed ? " · interpreter" : ""}
+            </dd>
+          </div>
+          <div>
+            <dt>Best time</dt>
+            <dd>
+              {brief.best_time || prefs.best_time || "Any"}
+              {prefs.timezone ? ` (${prefs.timezone})` : ""}
+            </dd>
+          </div>
+          <div>
+            <dt>Consent</dt>
+            <dd>
+              {brief.consent_to_automated_calls ? "Automated calls" : "No automated calls"}
+              {brief.consent_to_recording ? " · recording" : " · no recording"}
+            </dd>
+          </div>
+          {caregiver?.name || patient?.caregiver ? (
+            <div>
+              <dt>Caregiver</dt>
+              <dd>
+                {caregiver?.name || patient?.caregiver}
+                {caregiver?.phone ? ` · ${caregiver.phone}` : ""}
+              </dd>
+            </div>
+          ) : null}
+          {prefs.accessibility ? (
+            <div>
+              <dt>Accessibility</dt>
+              <dd>{prefs.accessibility}</dd>
+            </div>
+          ) : null}
+        </dl>
+      </div>
+      <div className="call-who-phone">
+        <span className="call-who-label">Phone</span>
+        {number ? (
+          tel ? (
+            <a className="call-who-number" href={tel}>
+              {number}
+            </a>
+          ) : (
+            <span className="call-who-number">{number}</span>
+          )
+        ) : (
+          <span className="call-who-number call-who-number-missing">No number on file</span>
+        )}
+        {patient?.email ? <small>{patient.email}</small> : null}
+      </div>
+    </section>
+  );
+}
+
+export function CallRoom() {
   const { patientId = "" } = useParams();
   const { refreshKey, notify } = useApp();
+  const call = useCall();
   const [modes, setModes] = useState<CallModes | null>(null);
   const [brief, setBrief] = useState<CallBrief | null>(null);
-  const [session, setSession] = useState<CallSession | null>(null);
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [recent, setRecent] = useState<CallSession | null>(null);
   const [mode, setMode] = useState<CallMode>("simulated");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ledger, setLedger] = useState<LedgerAction | null>(null);
   const [, tick] = useState(0);
-  const sessionRef = useRef<CallSession | null>(null);
-  sessionRef.current = session;
   const transcriptEnd = useRef<HTMLDivElement | null>(null);
 
-  const conversation = useConversation({
-    onMessage: (event: unknown) => {
-      const s = sessionRef.current;
-      if (!s) return;
-      const data = event as Record<string, unknown>;
-      const type = String(data.type ?? "");
-      if (type === "user_transcript") void api.calls.line(s.id, "patient", String(data.user_transcript ?? ""));
-      else if (type === "agent_response") void api.calls.line(s.id, "agent", String(data.agent_response ?? ""));
-    },
-    onError: (message: string) => setError(message || "The voice session failed."),
-    onDisconnect: () => {
-      const s = sessionRef.current;
-      if (s && s.mode === "browser" && LIVE.has(s.status)) void api.calls.end(s.id).then((r) => setSession(r.session));
-    },
-  });
-
-  const loadSession = useCallback(async (id: string) => {
-    const { session: s } = await api.calls.get(id);
-    setSession(s);
-  }, []);
+  // The app-wide call wins when it belongs to this patient; otherwise show the last one.
+  const session = call.session && call.session.patient_id === patientId ? call.session : recent;
+  const live = isLiveCall(session);
+  const events = session?.events || [];
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([api.calls.modes(), api.calls.brief(patientId), api.calls.forPatient(patientId)])
-      .then(([m, b, mine]) => {
+    setError(null);
+    Promise.all([api.calls.modes(), api.calls.brief(patientId), api.calls.forPatient(patientId), api.journey(patientId).catch(() => null)])
+      .then(([m, b, mine, journey]) => {
         if (cancelled) return;
         setModes(m);
         setBrief(b);
+        setPatient(journey?.patient ?? null);
         setPhone(b.phone || "");
-        setSession(mine.active || mine.recent[0] || null);
+        if (mine.active) call.follow(mine.active);
+        setRecent(mine.active || mine.recent[0] || null);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load the call room"));
     return () => {
       cancelled = true;
     };
-  }, [patientId]);
+  }, [patientId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Live: the change stream bumps refreshKey; poll as well in case it's off (memory mode).
+  // Keep the "last call" view current when the provider is not following it.
   useEffect(() => {
-    if (!session) return;
-    void loadSession(session.id);
+    if (!recent || (call.session && call.session.id === recent.id)) return;
+    api.calls
+      .get(recent.id)
+      .then((r) => setRecent(r.session))
+      .catch(() => undefined);
   }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!session || !LIVE.has(session.status)) return;
-    const t = window.setInterval(() => {
-      void loadSession(session.id);
-      tick((n) => n + 1);
-    }, 1000);
-    return () => window.clearInterval(t);
-  }, [session?.id, session?.status, loadSession]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!live) return;
+    const timer = window.setInterval(() => tick((n) => n + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [live]);
 
   useEffect(() => {
     if (!session) return;
@@ -137,22 +201,20 @@ function CallRoomInner() {
     transcriptEnd.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [session?.events.length]);
 
+  useEffect(() => {
+    if (call.error) setError(call.error);
+  }, [call.error]);
+
   const start = async () => {
+    if (call.live && call.session && call.session.patient_id !== patientId) {
+      setError(`You are already on a call with ${call.session.brief?.patient_name || "another patient"}. End it first.`);
+      return;
+    }
     setBusy(true);
     setError(null);
+    call.clearError();
     try {
-      const { session: s } = await api.calls.start(patientId, mode, mode === "phone" ? phone : undefined);
-      setSession(s);
-      if (mode === "browser") {
-        const agentId = modes?.agent_id;
-        if (!agentId) throw new Error("No ElevenLabs agent configured.");
-        const conversationId = await conversation.startSession({
-          agentId,
-          dynamicVariables: { patient_id: patientId, patient_name: brief?.patient_name || "", call_session_id: s.id },
-        });
-        const connectedSession = await api.calls.connected(s.id, typeof conversationId === "string" ? conversationId : null);
-        setSession(connectedSession.session);
-      }
+      await call.start(patientId, mode, { phone, agentId: modes?.agent_id, patientName: brief?.patient_name });
     } catch (err) {
       setError(err instanceof Error ? err.message : "The call could not start");
     } finally {
@@ -164,9 +226,8 @@ function CallRoomInner() {
     if (!session) return;
     setBusy(true);
     try {
-      if (session.mode === "browser" && conversation.status === "connected") await conversation.endSession();
-      const { session: s } = await api.calls.end(session.id);
-      setSession(s);
+      const ended = await call.end();
+      if (ended) setRecent(ended);
       notify("Call ended. What it changed is listed on the right.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not end the call");
@@ -175,14 +236,13 @@ function CallRoomInner() {
     }
   };
 
-  const events = session?.events || [];
-  const live = !!session && LIVE.has(session.status);
   const agenda = (session?.brief || brief)?.agenda || [];
   const effects = useMemo(() => {
-    if (session && !LIVE.has(session.status) && session.effects?.length) return session.effects;
+    if (session && !isLiveCall(session) && session.effects?.length) return session.effects;
     return events.flatMap((e) => e.effects || []);
   }, [session, events]);
   const turns = events.filter((e) => e.kind !== "system" || e.text.startsWith("Simulation error"));
+  const otherCall = call.live && call.session && call.session.patient_id !== patientId ? call.session : null;
 
   if (!brief || !modes) {
     return error ? <ErrorBanner message={error} /> : <Spinner label="Preparing the call room" />;
@@ -197,9 +257,9 @@ function CallRoomInner() {
           </p>
           <h1>{live ? "On the call" : session ? "Last call" : "Start a check-in call"}</h1>
           <p className="muted">
-            {brief.language} · best time {brief.best_time || "any"} ·{" "}
-            {brief.consent_to_recording ? "consented to recording" : "no recording"}
-            {brief.consent_to_automated_calls ? "" : " · no automated calls"}
+            {live
+              ? "Leaving this page does not end the call. A bar at the bottom brings you back."
+              : "The agent's brief, the conversation and what each answer changes, side by side."}
           </p>
         </div>
         {session ? (
@@ -219,7 +279,20 @@ function CallRoomInner() {
         ) : null}
       </div>
 
+      <WhoCard patient={patient} brief={brief} phone={session?.phone} />
+
       {error ? <ErrorBanner message={error} /> : null}
+
+      {otherCall ? (
+        <div className="banner">
+          <div>
+            <strong>You are on a call with {otherCall.brief?.patient_name || "another patient"}.</strong>
+            <p>
+              <Link to={callPath(otherCall)}>Return to that call</Link> or end it before starting this one.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {!live ? (
         <Card title={session ? "Start another call" : "How should this call happen?"}>
@@ -248,7 +321,7 @@ function CallRoomInner() {
             </label>
           ) : null}
           <div className="call-start">
-            <button className="btn btn-primary" onClick={start} disabled={busy || !brief.consent_to_automated_calls}>
+            <button className="btn btn-primary" onClick={start} disabled={busy || !brief.consent_to_automated_calls || !!otherCall}>
               {busy ? "Starting…" : `Start ${MODE_COPY[mode].title.toLowerCase()} call`}
             </button>
             {!brief.consent_to_automated_calls ? (
@@ -317,9 +390,9 @@ function CallRoomInner() {
           )}
           {live && session?.mode === "browser" ? (
             <p className="muted call-hint">
-              {conversation.isSpeaking ? "Agent speaking…" : "Listening. Speak as the patient."}{" "}
-              <button className="btn btn-small" onClick={() => conversation.setMuted(!conversation.isMuted)}>
-                {conversation.isMuted ? "Unmute" : "Mute"}
+              {call.voice.isSpeaking ? "Agent speaking…" : "Listening. Speak as the patient."}{" "}
+              <button className="btn btn-small" onClick={() => call.voice.setMuted(!call.voice.isMuted)}>
+                {call.voice.isMuted ? "Unmute" : "Mute"}
               </button>
             </p>
           ) : null}
@@ -365,13 +438,5 @@ function CallRoomInner() {
         </section>
       </div>
     </div>
-  );
-}
-
-export function CallRoom() {
-  return (
-    <ConversationProvider>
-      <CallRoomInner />
-    </ConversationProvider>
   );
 }

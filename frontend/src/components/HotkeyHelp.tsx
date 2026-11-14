@@ -2,14 +2,21 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 
 const GLOBAL: { label: string; keys: string[] }[] = [
-  { label: "Go to Overview", keys: ["g", "d"] },
+  { label: "Go to Needs you", keys: ["g", "d"] },
   { label: "Go to Patients", keys: ["g", "p"] },
-  { label: "Go to Approvals", keys: ["g", "a"] },
+  { label: "Go to Decisions", keys: ["g", "a"] },
   { label: "Go to Audit log", keys: ["g", "l"] },
   { label: "Focus search", keys: ["/"] },
   { label: "Ask Continuum", keys: ["a"] },
   { label: "Command palette", keys: ["k"] },
   { label: "Keyboard shortcuts", keys: ["?"] },
+];
+
+const QUEUE: { label: string; keys: string[] }[] = [
+  { label: "Next item", keys: ["j"] },
+  { label: "Previous item", keys: ["k"] },
+  { label: "Run the main action", keys: ["enter"] },
+  { label: "Open the patient", keys: ["p"] },
 ];
 
 const TASK: { label: string; keys: string[] }[] = [
@@ -20,6 +27,25 @@ const TASK: { label: string; keys: string[] }[] = [
   { label: "Approval: reject", keys: ["x"] },
   { label: "Close dialogs, palette and tour", keys: ["esc"] },
 ];
+
+function Rows({ rows }: { rows: { label: string; keys: string[] }[] }) {
+  return (
+    <>
+      {rows.map((row) => (
+        <div className="help-row" key={row.label}>
+          <span>{row.label}</span>
+          <span className="help-keys">
+            {row.keys.map((key) => (
+              <kbd key={key} className="kbd">
+                {key}
+              </kbd>
+            ))}
+          </span>
+        </div>
+      ))}
+    </>
+  );
+}
 
 export function HotkeyHelp({ open, onClose }: { open: boolean; onClose: () => void }) {
   useEffect(() => {
@@ -44,33 +70,15 @@ export function HotkeyHelp({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
         <div className="help-section">
           <h3>Navigation</h3>
-          {GLOBAL.map((row) => (
-            <div className="help-row" key={row.label}>
-              {row.label}
-              <span className="help-keys">
-                {row.keys.map((key) => (
-                  <kbd key={key} className="kbd">
-                    {key}
-                  </kbd>
-                ))}
-              </span>
-            </div>
-          ))}
+          <Rows rows={GLOBAL} />
+        </div>
+        <div className="help-section">
+          <h3>Needs you</h3>
+          <Rows rows={QUEUE} />
         </div>
         <div className="help-section">
           <h3>On the cards</h3>
-          {TASK.map((row) => (
-            <div className="help-row" key={row.label}>
-              {row.label}
-              <span className="help-keys">
-                {row.keys.map((key) => (
-                  <kbd key={key} className="kbd">
-                    {key}
-                  </kbd>
-                ))}
-              </span>
-            </div>
-          ))}
+          <Rows rows={TASK} />
         </div>
         <p className="help-foot">
           Task keys work while a card is hovered or focused. Hotkeys pause while you are typing in a field.

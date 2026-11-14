@@ -3,16 +3,32 @@ import { createPortal } from "react-dom";
 import { Icon, type IconName } from "./Icon";
 
 const TOUR_ITEMS: { icon: IconName; title: string; body: string }[] = [
-  { icon: "overview", title: "Overview", body: "Your caseload at a glance — open loops, overdue and awaiting verification, plus the demo day runner." },
-  { icon: "users", title: "Patient journey", body: "Each patient's timeline, obligations and evidence trail in one place." },
-  { icon: "check", title: "Approvals", body: "Sensitive changes pause here for your decision. Approve or reject with Y / X." },
-  { icon: "document", title: "Audit log", body: "Append-only trail of every change. Nothing in Continuum is ever overwritten." },
+  {
+    icon: "list",
+    title: "Needs you",
+    body: "Your home page: one list, overdue first. Missed calls, overdue follow-ups, things to verify. J and K move, Enter runs the main action.",
+  },
+  {
+    icon: "users",
+    title: "Patients",
+    body: "Each patient's timeline, follow-ups and evidence, with the call room and the assistant one click away.",
+  },
+  {
+    icon: "document",
+    title: "Add a discharge",
+    body: "Paste a discharge summary. The agent turns it into tracked follow-ups you can edit before saving.",
+  },
+  {
+    icon: "check",
+    title: "Decisions",
+    body: "Sensitive changes pause here for a person. Approve with Y, reject with X. Every decision is logged.",
+  },
 ];
 
 const TOUR_KEYS: { label: string; keys: string[] }[] = [
-  { label: "Overview", keys: ["g", "d"] },
+  { label: "Needs you", keys: ["g", "d"] },
   { label: "Patients", keys: ["g", "p"] },
-  { label: "Approvals", keys: ["g", "a"] },
+  { label: "Decisions", keys: ["g", "a"] },
   { label: "Audit log", keys: ["g", "l"] },
   { label: "Search", keys: ["/"] },
   { label: "Ask Continuum", keys: ["a"] },
@@ -43,21 +59,16 @@ export function WelcomeTour({
   return createPortal(
     <div className="tour-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <div className="tour-card" role="dialog" aria-modal="true" aria-label="Welcome to Continuum">
-        <p className="eyebrow">
-          <span className="eyebrow-dot" />
-          Welcome to Continuum
-        </p>
+        <p className="eyebrow tour-eyebrow">Welcome to Continuum</p>
         <h2>Your post-discharge caseload, in one calm place.</h2>
-        <p>
-          Every follow-up stays an open loop until evidence closes it. Here is where things live:
-        </p>
+        <p className="tour-intro">Every follow-up stays open until evidence closes it. Here is where things live:</p>
         <div className="tour-grid">
           {TOUR_ITEMS.map((item) => (
             <div className="tour-item" key={item.title}>
               <span className="tour-icon">
                 <Icon name={item.icon} />
               </span>
-              <div>
+              <div className="tour-item-text">
                 <b>{item.title}</b>
                 <span>{item.body}</span>
               </div>
@@ -67,7 +78,7 @@ export function WelcomeTour({
         <div className="tour-keys">
           {TOUR_KEYS.map((row) => (
             <div key={row.label}>
-              {row.label}
+              <span>{row.label}</span>
               <span className="help-keys">
                 {row.keys.map((key) => (
                   <kbd key={key} className="kbd">
