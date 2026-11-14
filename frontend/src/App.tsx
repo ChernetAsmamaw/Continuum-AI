@@ -16,6 +16,7 @@ import { Login } from "./pages/Login";
 import { PatientIntake } from "./pages/PatientIntake";
 import { PatientJourney } from "./pages/PatientJourney";
 import { PatientsPage } from "./pages/PatientsPage";
+import { QueuePage } from "./pages/QueuePage";
 import { ReviewPage } from "./pages/ReviewPage";
 import { WorkPage } from "./pages/WorkPage";
 
@@ -37,7 +38,8 @@ export default function App() {
           <Route path="/checkin/:token" element={<CheckinPage />} />
           <Route element={<RequireAuth />}>
             <Route element={<AppProvider><Layout /></AppProvider>}>
-              <Route path="/console" element={<Dashboard />} />
+              <Route path="/console" element={<QueuePage />} />
+              <Route path="/overview" element={<Dashboard />} />
               <Route path="/work" element={<WorkPage />} />
               <Route path="/patients" element={<PatientsPage />} />
               <Route path="/patients/new" element={<PatientIntake />} />

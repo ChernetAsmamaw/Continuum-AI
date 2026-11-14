@@ -111,25 +111,34 @@ function Icon({ name, className }: { name: IconName; className?: string }) {
   }
 }
 
-const NAV: { to: string; label: string; icon: IconName; end?: boolean; badge?: "approvals" | "review" | "attention" }[] = [
-  { to: "/console", label: "Overview", icon: "overview", end: true },
-  { to: "/work", label: "My work", icon: "work" },
+type NavItem = { to: string; label: string; icon: IconName; end?: boolean; badge?: "queue" | "approvals" | "review" | "attention" };
+
+const NAV: NavItem[] = [
+  { to: "/console", label: "Needs you", icon: "work", end: true, badge: "queue" },
   { to: "/patients", label: "Patients", icon: "patients" },
-  { to: "/approvals", label: "Approvals", icon: "approvals", badge: "approvals" },
-  { to: "/review", label: "Review", icon: "shield", badge: "review" },
-  { to: "/actions", label: "Action ledger", icon: "ledger", badge: "attention" },
-  { to: "/ingestion", label: "EHR ingestion", icon: "database" },
+  { to: "/patients/new", label: "Add a discharge", icon: "overview", end: true },
+  { to: "/work", label: "Assigned to me", icon: "approvals" },
+];
+
+const ACTIVITY: NavItem[] = [
+  { to: "/actions", label: "Calls and tasks", icon: "ledger", badge: "attention" },
+  { to: "/ingestion", label: "Imports", icon: "database" },
+  { to: "/review", label: "Order and ID checks", icon: "shield", badge: "review" },
+  { to: "/approvals", label: "Decisions", icon: "approvals" },
   { to: "/audit", label: "Audit log", icon: "audit" },
+  { to: "/overview", label: "Overview and demo", icon: "overview" },
 ];
 
 function sectionLabel(pathname: string): string {
-  if (pathname === "/console") return "Overview";
+  if (pathname === "/console") return "Needs you";
+  if (pathname === "/overview") return "Overview";
+  if (pathname === "/patients/new") return "Add a discharge";
   if (pathname.startsWith("/patients")) return "Patients";
-  if (pathname.startsWith("/work")) return "My work";
-  if (pathname.startsWith("/approvals")) return "Approvals";
-  if (pathname.startsWith("/review")) return "Review";
-  if (pathname.startsWith("/actions")) return "Action ledger";
-  if (pathname.startsWith("/ingestion")) return "EHR ingestion";
+  if (pathname.startsWith("/work")) return "Assigned to me";
+  if (pathname.startsWith("/approvals")) return "Decisions";
+  if (pathname.startsWith("/review")) return "Order and ID checks";
+  if (pathname.startsWith("/actions")) return "Calls and tasks";
+  if (pathname.startsWith("/ingestion")) return "Imports";
   if (pathname.startsWith("/audit")) return "Audit log";
   return "Workspace";
 }
@@ -242,9 +251,10 @@ export function Layout() {
 
   const paletteActions = useMemo<PaletteAction[]>(
     () => [
-      { id: "overview", label: "Go to Overview", icon: "overview", keys: ["g", "d"], run: () => navigate("/console") },
+      { id: "queue", label: "Go to Needs you", icon: "overview", keys: ["g", "d"], run: () => navigate("/console") },
+      { id: "overview", label: "Go to Overview and demo", icon: "overview", run: () => navigate("/overview") },
       { id: "patients", label: "Go to Patients", icon: "users", keys: ["g", "p"], run: () => navigate("/patients") },
-      { id: "approvals", label: "Go to Approvals", icon: "check", keys: ["g", "a"], run: () => navigate("/approvals") },
+      { id: "approvals", label: "Go to Decisions", icon: "check", keys: ["g", "a"], run: () => navigate("/approvals") },
       { id: "audit", label: "Go to Audit log", icon: "document", keys: ["g", "l"], run: () => navigate("/audit") },
       { id: "ask", label: "Ask Continuum", icon: "chat", keys: ["a"], run: () => navigate(agentHref) },
       { id: "search", label: "Focus search", icon: "search", keys: ["/"], run: () => window.setTimeout(() => searchRef.current?.focus(), 0) },
@@ -257,8 +267,34 @@ export function Layout() {
   );
 
   const pending = dashboard?.stats.pending_approvals ?? 0;
-  const open = dashboard?.stats.open_obligations ?? 0;
   const pageLabel = sectionLabel(location.pathname);
+  const queueCount = (dashboard?.stats.overdue ?? 0) + pending + (ops?.review ?? 0) + (ops?.attention ?? 0);
+
+  const badgeFor = (badge: NavItem["badge"]) => {
+    if (badge === "queue") return queueCount > 0 ? <b>{queueCount}</b> : null;
+    if (badge === "review") return (ops?.review ?? 0) > 0 ? <b>{ops?.review}</b> : null;
+    if (badge === "attention") return (ops?.attention ?? 0) > 0 ? <b>{ops?.attention}</b> : null;
+    return null;
+  };
+
+  const renderNav = (item: NavItem) => {
+    // "Patients" stays lit on a patient's pages but not on "Add a discharge".
+    const active =
+      item.to === "/patients"
+        ? location.pathname.startsWith("/patients") && location.pathname !== "/patients/new"
+        : item.end
+          ? location.pathname === item.to
+          : location.pathname.startsWith(item.to);
+    return (
+      <NavLink key={item.to} to={item.to} end={item.end} className={cx("nav", active && "nav-active")} aria-current={active ? "page" : undefined}>
+        <span className="nav-icon">
+          <Icon name={item.icon} />
+        </span>
+        <span>{item.label}</span>
+        {badgeFor(item.badge)}
+      </NavLink>
+    );
+  };
 
   const submitSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -270,7 +306,7 @@ export function Layout() {
   return (
     <div className="app-shell">
       <aside className={cx("sidebar", menuOpen && "sidebar-open")}>
-        <Link to="/console" className="brand" aria-label="Continuum overview">
+        <Link to="/console" className="brand" aria-label="Continuum home">
           <span className="brandmark">
             <Icon name="loop" />
           </span>
@@ -281,23 +317,9 @@ export function Layout() {
         </Link>
 
         <nav className="nav-list" aria-label="Main navigation">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) => cx("nav", isActive && "nav-active")}
-            >
-              <span className="nav-icon">
-                <Icon name={item.icon} />
-              </span>
-              <span>{item.label}</span>
-              {item.badge === "approvals" && pending > 0 ? <b>{pending}</b> : null}
-              {item.badge === "review" && (ops?.review ?? 0) > 0 ? <b>{ops?.review}</b> : null}
-              {item.badge === "attention" && (ops?.attention ?? 0) > 0 ? <b>{ops?.attention}</b> : null}
-              {item.to === "/patients" && open > 0 ? <b className="nav-soft">{open}</b> : null}
-            </NavLink>
-          ))}
+          {NAV.map(renderNav)}
+          <p className="sidebar-label nav-group-label">Activity</p>
+          {ACTIVITY.map(renderNav)}
         </nav>
 
         <div className="sidebar-section">
@@ -397,13 +419,13 @@ export function Layout() {
             >
               ?
             </button>
-            <Link className="btn btn-primary top-ask" to={agentHref}>
+            <Link className="btn top-ask" to={agentHref}>
               Ask Continuum
             </Link>
           </div>
         </header>
 
-        <main className="page" key={location.pathname}>
+        <main className={cx("page", location.pathname === "/console" && "page-flush")} key={location.pathname}>
           {error ? (
             <div className="banner banner-error">
               <div>
