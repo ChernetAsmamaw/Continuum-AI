@@ -106,6 +106,23 @@ TOOLS = [
 ]
 
 
+# The agent hangs up after the goodbye, skips voicemail, ends a silent line
+# after 30 s and says a short filler while a tool or the LLM is slow.
+BUILT_IN_TOOLS = {
+    "end_call": {"name": "end_call", "params": {"system_tool_type": "end_call"},
+                 "description": "End the call after saying goodbye, when the caller is done, or when there is no answer."},
+    "voicemail_detection": {"name": "voicemail_detection", "params": {"system_tool_type": "voicemail_detection"},
+                            "description": "Detects voicemail or an answering machine and ends the call without leaving details."},
+}
+TURN = {
+    "silence_end_call_timeout": 30.0,
+    "turn_timeout": 7.0,
+    "soft_timeout_config": {"timeout_seconds": 2.5, "message": "One moment.",
+                            "additional_soft_timeout_messages": ["Just a second.", "Bear with me one moment."],
+                            "randomize_fillers": True, "use_llm_generated_message": False},
+}
+
+
 def load_env() -> dict[str, str]:
     out = {}
     for line in ENV.read_text().splitlines():
@@ -156,8 +173,10 @@ def main(base: str) -> None:
                 "first_message": FIRST_MESSAGE,
                 "language": "en",
                 "dynamic_variables": DYNAMIC_VARIABLES,
-                "prompt": {"prompt": PROMPT.read_text().strip(), "tool_ids": tool_ids},
+                "prompt": {"prompt": PROMPT.read_text().strip(), "tool_ids": tool_ids,
+                           "built_in_tools": BUILT_IN_TOOLS},
             },
+            "turn": TURN,
         },
     })
     agent_id = agent["agent_id"]

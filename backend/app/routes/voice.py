@@ -1,7 +1,9 @@
 import json
+import threading
 import logging
 import re
 
+from starlette.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from .. import repository as repo
@@ -16,6 +18,7 @@ from ..workflow import (
     voice_escalate,
     voice_identify,
     voice_report,
+    REPORT_ACK,
     voice_request_appointment,
     voice_request_callback,
     voice_request_follow_up,
@@ -97,7 +100,8 @@ def _call_event(patient_id: str, payload: dict, tool: str, summary: str, run) ->
     from .. import calls
     from ..db import get_db
 
-    key = _repeat_key(patient_id, tool, payload)
+    key = None if payload.get("_background") else _repeat_key(patient_id, tool, payload)
+    payload = {k: v for k, v in payload.items() if k != "_background"}
     now = time.monotonic()
     if key:
         with _RECENT_LOCK:
@@ -135,7 +139,7 @@ async def report(request: Request, patient_id: str | None = Query(default=None))
         raise HTTPException(status_code=422, detail="patient_id is required")
     if not payload.get("report"):
         raise HTTPException(status_code=422, detail="report is required")
-    return _call_event(resolved, payload, "report", "Recorded patient report (unverified until the clinic confirms)", lambda: voice_report(
+    run = lambda: voice_report(  # noqa: E731
         patient_id=resolved,
         report=payload["report"],
         obligation_id=payload.get("obligation_id"),
@@ -143,7 +147,34 @@ async def report(request: Request, patient_id: str | None = Query(default=None))
         reported_date=payload.get("reported_date"),
         conversation_id=payload.get("conversation_id") or payload.get("conversationId"),
         direction=payload.get("direction", "inbound"),
-    ))
+    )
+    summary = "Recorded patient report (unverified until the clinic confirms)"
+    conversation = payload.get("conversation_id") or payload.get("conversationId")
+    if not conversation:
+        return await run_in_threadpool(_call_event, resolved, payload, "report", summary, run)
+    # Live call: the caller is waiting on the line. Acknowledge at once and let
+    # the agent graph (an LLM run of several seconds) record it in the background.
+    key = _repeat_key(resolved, "report", payload)
+    with _RECENT_LOCK:
+        hit = _RECENT_CALLS.get(key) if key else None
+    if hit:
+        return {**hit[1], "repeat": True}
+    ack = {"ok": True, "status": "recording", "reply": REPORT_ACK, "spoken_response": REPORT_ACK,
+           "agent_instructions": "Read spoken_response as is, then move straight on to the next follow-up."}
+    if key:
+        import time
+
+        with _RECENT_LOCK:
+            _RECENT_CALLS[key] = (time.monotonic(), ack)
+    threading.Thread(target=_record_report_safely, args=(resolved, payload, summary, run), daemon=True).start()
+    return ack
+
+
+def _record_report_safely(patient_id: str, payload: dict, summary: str, run) -> None:
+    try:
+        _call_event(patient_id, {**payload, "_background": True}, "report", summary, run)
+    except Exception:  # pragma: no cover - logged, never surfaces on the call
+        log.exception("Background voice report failed for %s", patient_id)
 
 
 @router.post("/escalate")
@@ -159,7 +190,7 @@ async def escalate(request: Request, patient_id: str | None = Query(default=None
         raise HTTPException(status_code=422, detail="patient_id is required")
     if not payload.get("reason"):
         raise HTTPException(status_code=422, detail="reason is required")
-    return _call_event(resolved, payload, "escalate", "Escalated to a clinician (no advice given)", lambda: voice_escalate(
+    return await run_in_threadpool(_call_event, resolved, payload, "escalate", "Escalated to a clinician (no advice given)", lambda: voice_escalate(
         patient_id=resolved,
         reason=payload["reason"],
         urgency=payload.get("urgency", "routine"),
@@ -180,7 +211,7 @@ async def appointment(request: Request, patient_id: str | None = Query(default=N
         raise HTTPException(status_code=422, detail="patient_id is required")
     if not payload.get("requested_time"):
         raise HTTPException(status_code=422, detail="requested_time is required")
-    return _call_event(resolved, payload, "appointment", "Booking requested; waiting on the care team to confirm", lambda: voice_request_appointment(
+    return await run_in_threadpool(_call_event, resolved, payload, "appointment", "Booking requested; waiting on the care team to confirm", lambda: voice_request_appointment(
         patient_id=resolved,
         requested_time=payload["requested_time"],
         obligation_id=payload.get("obligation_id"),
@@ -202,7 +233,7 @@ async def follow_up(request: Request, patient_id: str | None = Query(default=Non
         raise HTTPException(status_code=422, detail="patient_id is required")
     if not payload.get("item"):
         raise HTTPException(status_code=422, detail="item is required")
-    return _call_event(resolved, payload, "follow_up", "Follow-up task queued for the care team", lambda: voice_request_follow_up(
+    return await run_in_threadpool(_call_event, resolved, payload, "follow_up", "Follow-up task queued for the care team", lambda: voice_request_follow_up(
         patient_id=resolved,
         item=payload["item"],
         reason=payload.get("reason") or "",
@@ -223,7 +254,7 @@ async def checkin(request: Request, patient_id: str | None = Query(default=None)
         raise HTTPException(status_code=422, detail="patient_id is required")
     if not payload.get("when"):
         raise HTTPException(status_code=422, detail="when is required")
-    return _call_event(resolved, payload, "callback", "Follow-up call scheduled", lambda: voice_request_callback(
+    return await run_in_threadpool(_call_event, resolved, payload, "callback", "Follow-up call scheduled", lambda: voice_request_callback(
         patient_id=resolved,
         when=payload["when"],
         reason=payload.get("reason") or "",

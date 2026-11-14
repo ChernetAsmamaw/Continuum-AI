@@ -317,3 +317,22 @@ def test_voice_tags_are_stripped_from_agent_lines():
     from app.util import strip_voice_tags
 
     assert strip_voice_tags("[happy] Thanks, Michael. [slow] Great.") == "Thanks, Michael. Great."
+
+
+def test_live_call_report_answers_at_once_and_records_in_background(client):
+    import time
+
+    from app.db import get_db
+
+    before = get_db().evidence.count_documents({"patient_id": MICHAEL})
+    started = time.monotonic()
+    body = {"patient_id": MICHAEL, "report": "I had my bloodwork done yesterday.", "conversation_id": "conv_bg_test"}
+    reply = client.post("/api/voice/report", json=body).json()
+    assert reply["status"] == "recording" and reply["spoken_response"]
+    assert time.monotonic() - started < 2
+    for _ in range(50):
+        if get_db().evidence.count_documents({"patient_id": MICHAEL}) > before:
+            break
+        time.sleep(0.1)
+    assert get_db().evidence.count_documents({"patient_id": MICHAEL}) > before
+    assert client.post("/api/voice/report", json=body).json().get("repeat") is True
