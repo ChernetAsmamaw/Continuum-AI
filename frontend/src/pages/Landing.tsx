@@ -149,37 +149,37 @@ const EDGES: [NodeId, NodeId][] = [
 const STEPS: { title: string; body: string; nodes: NodeId[]; edges: number[] }[] = [
   {
     title: "The hospital discharges Michael",
-    body: "Its record system sends a standard discharge message. Nobody has to type anything in.",
+    body: "The hospital's system sends the discharge. Nobody types it in.",
     nodes: ["ehr", "ingest"],
     edges: [0],
   },
   {
     title: "The record becomes follow-ups",
-    body: "Continuum pulls orders, appointments, medications and the summary, then saves each follow-up with an owner and a deadline.",
+    body: "Each follow-up gets an owner and a deadline.",
     nodes: ["ingest", "atlas"],
     edges: [1],
   },
   {
     title: "The agent decides what's next",
-    body: "It reads the patient's history and memory from Atlas, proposes the next step, and asks a person before anything sensitive.",
+    body: "It proposes the next step and asks a person before anything sensitive.",
     nodes: ["atlas", "agent"],
     edges: [2],
   },
   {
     title: "Michael gets a call",
-    body: "When a check-in is due, the voice agent calls him. Everything he says is saved as his own report, not as fact.",
+    body: "The voice agent calls him. What he says is saved as a report, not fact.",
     nodes: ["atlas", "voice", "patient"],
     edges: [6, 7],
   },
   {
     title: "The care team sees it instantly",
-    body: "Every change in Atlas reaches the console the moment it happens, sorted by what needs a person first.",
+    body: "Changes reach the console instantly, most urgent first.",
     nodes: ["atlas", "console"],
     edges: [5],
   },
   {
     title: "Proof closes the loop",
-    body: "Automations ask the EHR for lab results and visit notes. Only real evidence turns a follow-up into verified.",
+    body: "Lab results from the EHR mark it verified. Nothing closes without proof.",
     nodes: ["auto", "ehr", "atlas"],
     edges: [3, 4],
   },
@@ -261,8 +261,8 @@ function SentVsDone() {
       </ol>
       <p>
         {stage < 2
-          ? "The call was placed. Continuum treats that as sent, not done, until the transcript comes back."
-          : "The transcript arrived, so the call is confirmed. A call with no transcript gets flagged instead."}
+          ? "Placed, but not done until the transcript comes back."
+          : "Transcript received: confirmed. No transcript would get flagged."}
       </p>
       <button type="button" className="lp-ghost" onClick={() => setStage((n) => (n < 2 ? 2 : 1))}>
         {stage < 2 ? "Transcript arrives" : "Reset"}
@@ -288,8 +288,8 @@ function CrashResume() {
       </ol>
       <p>
         {phase === "crashed"
-          ? "The server stopped after step 3. Steps 1 to 3 are saved in Atlas."
-          : "On restart Continuum found the job, skipped what was saved, and finished from step 4. Nothing was pulled twice."}
+          ? "Stopped after step 3. Steps 1 to 3 are saved in Atlas."
+          : "Resumed at step 4. Nothing ran twice."}
       </p>
       <button type="button" className="lp-ghost" onClick={() => setPhase((p) => (p === "crashed" ? "resumed" : "crashed"))}>
         {phase === "crashed" ? "Restart the server" : "Crash it again"}
@@ -316,8 +316,8 @@ function CodeChange() {
       </div>
       <p>
         {matched
-          ? "Vector Search matched it by meaning (score 0.90) and tracked it as the same bloodwork. A coordinator's correction is remembered next time."
-          : "The hospital changed the code and the wording. A rule that only knows exact codes would miss this order."}
+          ? "Matched by meaning (score 0.90). Corrections are remembered."
+          : "New code, new wording. Exact-match rules would miss it."}
       </p>
       <button type="button" className="lp-ghost" onClick={() => setMatched((m) => !m)}>
         {matched ? "Reset" : "Match with Vector Search"}
@@ -387,32 +387,32 @@ const BRIEF: { ask: string; built: string }[] = [
   {
     ask: "Complete a long, multi-step task across several systems",
     built:
-      "A 30-day transition of care: the hospital's EHR (HL7 and FHIR), phone calls through ElevenLabs, texts and a patient portal, and the care team's console.",
+      "30 days of follow-up across the EHR, phone calls, texts and the care team's console.",
   },
   {
     ask: "Use MongoDB Atlas to persist verified task state",
     built:
-      "Every follow-up, its evidence, every action and its outcome, the audit trail and the agent's checkpoints live in Atlas, with schema validation and change streams.",
+      "Follow-ups, proof, every action's outcome and the agent's checkpoints live in Atlas.",
   },
   {
     ask: "Use Vector Search to retrieve relevant past experience",
     built:
-      "Patient memory is searched by meaning, per patient, and new hospital orders are matched to ones Continuum has seen before.",
+      "Patient memory and hospital orders are matched by meaning.",
   },
   {
     ask: "Survive crashes and system changes, and know what actually happened",
-    built: "The three answers below. Each one is working code you can try.",
+    built: "Try the three answers below.",
   },
 ];
 
 const STACK: { name: string; role: string }[] = [
-  { name: "MongoDB Atlas", role: "The shared record: follow-ups, evidence, every action, the audit trail, and the agent's checkpoints." },
-  { name: "Atlas Vector Search", role: "Patient memory and order matching by meaning, kept separate per patient." },
-  { name: "Change streams", role: "Push every change to the care team console the moment it is written." },
-  { name: "LangGraph + Gemini", role: "The agent that reads documents and reports and proposes the next step." },
-  { name: "ElevenLabs", role: "The voice agent that calls patients and records what they say through tools." },
-  { name: "HL7 and FHIR", role: "How discharges and lab results arrive from the hospital's record system." },
-  { name: "LangSmith", role: "A trace of every agent run, so a reviewer can see what it read and why." },
+  { name: "MongoDB Atlas", role: "The shared record and the agent's checkpoints." },
+  { name: "Atlas Vector Search", role: "Memory and order matching by meaning." },
+  { name: "Change streams", role: "Live updates in the console." },
+  { name: "LangGraph + Gemini", role: "The agent that reads and decides." },
+  { name: "ElevenLabs", role: "Phone calls with patients." },
+  { name: "HL7 and FHIR", role: "Discharges and results from the hospital." },
+  { name: "LangSmith", role: "A trace of every agent run." },
 ];
 
 export function Landing() {
@@ -440,8 +440,7 @@ export function Landing() {
         <div className="lp-hero-copy">
           <h1>Leaving the hospital is when care falls through the cracks.</h1>
           <p className="lp-lede">
-            Every discharge comes with a plan: see your doctor in a week, repeat the bloodwork, a nurse will visit. Nobody owns
-            making sure it happens. Continuum is an AI agent that does, for all 30 days.
+            Discharge plans say who to see and when. Nobody makes sure it happens. Continuum does, for 30 days.
           </p>
           <div className="lp-cta">
             <Link to="/demo" className="lp-btn">
@@ -467,32 +466,28 @@ export function Landing() {
             ))}
           </ul>
           <p className="lp-section-lede">
-            It isn't that nobody cares. The work is spread across the hospital, clinics, labs, pharmacies and phone calls, and
-            every one of them assumes someone else is following up. Results come back to nobody. Appointments never get booked.
-            The patient says "I'm fine" and nothing checks.
+            Follow-up is split across hospitals, clinics, labs and phone calls. Everyone assumes someone else has it.
           </p>
         </section>
 
         <section className="lp-section" id="solution">
           <h2>Continuum finishes the plan</h2>
           <p className="lp-section-lede">
-            It reads the discharge, turns it into follow-ups with owners and deadlines, calls the patient, chases what's late,
-            and closes each item only when there's proof. The care team only sees what needs a person. Watch one patient:
+            It turns the discharge into follow-ups, calls the patient, chases what's late, and closes items only with proof.
           </p>
           <HeroDemo />
         </section>
 
         <section className="lp-section" id="flow">
           <h2>How it works</h2>
-          <p className="lp-section-lede">Step through one discharge, from the hospital's record to a verified follow-up.</p>
+          <p className="lp-section-lede">One discharge, step by step.</p>
           <FlowMap />
         </section>
 
         <section className="lp-section" id="brief">
           <h2>Built for "Finish the Job"</h2>
           <p className="lp-section-lede">
-            Continuum answers Statement Three of the MongoDB Agents in Context hackathon. Here is each requirement and what we
-            built for it.
+            Statement Three of MongoDB Agents in Context, requirement by requirement.
           </p>
           <dl className="lp-brief">
             {BRIEF.map((b) => (
@@ -519,7 +514,7 @@ export function Landing() {
 
         <section className="lp-final">
           <h2>See it working</h2>
-          <p>The console opens with a full synthetic caseload: overdue follow-ups, a live call room and an assistant you can ask.</p>
+          <p>A full synthetic caseload, a live call room and an assistant you can ask.</p>
           <Link to="/demo" className="lp-btn">
             Open the live demo
           </Link>
