@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useApp } from "../state";
 import type { Conflict, Evidence, Obligation, ReviewQueue } from "../types";
-import { cx, dueLabel, formatDate, formatDateTime, pct, StatusPill, statusLabel, statusTone } from "../ui";
+import { obligationTone } from "../tones";
+import { cx, dueLabel, formatDate, formatDateTime, pct, statusLabel, statusTone } from "../ui";
 import { AssignControl } from "./AssignControl";
 import { Modal } from "./Modal";
 import { needsTypeReview, OrderTypeForm, ProvenanceDetails, ProvenanceTags } from "./Provenance";
@@ -63,6 +64,15 @@ export function ObligationCard({
   const [reviewItem, setReviewItem] = useState<ReviewQueue["orders"][number] | null>(null);
   const [reviewCategories, setReviewCategories] = useState<ReviewQueue["categories"] | undefined>(undefined);
   const typeReview = needsTypeReview(obligation);
+  const tone = obligationTone(obligation);
+  const statusText =
+    obligation.status === "overdue"
+      ? `${obligation.days_overdue || ""} ${obligation.days_overdue === 1 ? "day" : "days"} overdue`.trim()
+      : obligation.status === "scheduled" && obligation.confirmed_date
+        ? `Booked ${formatDate(obligation.confirmed_date)}`
+        : obligation.status === "pending" || obligation.status === "unknown"
+          ? dueLabel(obligation.days_until_due)
+          : statusLabel(obligation.status);
 
   const unresolved = (obligation.conflicts || []).filter((conflict) => !conflict.resolved);
   const isClosed = obligation.status === "verified" || obligation.status === "cancelled";
@@ -181,98 +191,85 @@ export function ObligationCard({
 
   return (
     <article
-      className={cx("obligation-card", dense && "obligation-card-dense")}
+      className={cx("obligation-card ob", `ob-${tone}`, dense && "obligation-card-dense")}
       onMouseEnter={() => setCardActive(true)}
       onMouseLeave={() => setCardActive(false)}
       onFocusCapture={() => setCardActive(true)}
       onBlurCapture={() => setCardActive(false)}
     >
-      <div className="obligation-top">
-        <div className="obligation-heading">
-          <div className="obligation-title-row">
-            <h3>{obligation.description}</h3>
-            <StatusPill status={obligation.status} derived={obligation.status_derived} />
-          </div>
-          <p className="obligation-meta">
-            {patientName ? <span className="obligation-patient">{patientName}</span> : null}
-            <span>Owner · {obligation.owner}</span>
-            {obligation.category ? <span className="tag tag-muted">{obligation.category.replace(/_/g, " ")}</span> : null}
+      <div className="ob-head">
+        <span className={cx("dot", `dot-${tone}`)} aria-hidden="true" />
+        <div className="ob-heading">
+          <h3>{obligation.description}</h3>
+          <p className="ob-meta">
+            {patientName ? <b>{patientName}</b> : null}
+            <span>Owner: {obligation.owner}</span>
+            {obligation.assignee ? <span>Chased by {obligation.assignee.name}</span> : null}
             <ProvenanceTags obligation={obligation} />
           </p>
         </div>
-        <div className="obligation-due">
-          <strong className={cx(obligation.days_overdue ? "text-danger" : "")}>{dueLabel(obligation.days_until_due)}</strong>
-          <small>{formatDate(obligation.due_date)}</small>
+        <div className={cx("ob-when", `tone-${tone}`)}>
+          <b>{statusText}</b>
+          {obligation.due_date && !isClosed ? <small>Due {formatDate(obligation.due_date)}</small> : null}
         </div>
       </div>
 
-      {obligation.next_action ? (
-        <p className="obligation-next">
-          <span>Next step</span>
-          {obligation.next_action}
-        </p>
-      ) : null}
-
       {unresolved.length > 0 ? (
-        <div className="conflict-box">
-          <div className="conflict-head">
-            <strong>Conflicting information preserved</strong>
-            <Link to="/approvals" className="link-inline">
-              Resolve in approvals →
-            </Link>
-          </div>
+        <div className="ob-conflict">
           {unresolved.map((conflict: Conflict, index) => (
-            <div className="conflict-values" key={`${conflict.reported_value}-${index}`}>
-              <span>
-                <small>Recorded</small>
-                <b>{conflict.recorded_value || "—"}</b>
-              </span>
-              <span className="conflict-arrow">≠</span>
-              <span>
-                <small>Patient reported</small>
-                <b>{conflict.reported_value || "—"}</b>
-              </span>
-            </div>
+            <p key={`${conflict.reported_value}-${index}`}>
+              <span>Clinic record</span> <b>{conflict.recorded_value || "none"}</b>
+              <span>Patient says</span> <b className="tone-amber">{conflict.reported_value || "none"}</b>
+            </p>
           ))}
+          <Link to="/approvals">Choose the right date</Link>
         </div>
       ) : null}
 
-      {obligation.latest_evidence ? (
-        <p className="obligation-evidence">
-          <span>Latest evidence</span>
-          {obligation.latest_evidence}
-        </p>
-      ) : null}
-
-      <div className="obligation-foot">
-        <button className="link-button obligation-toggle" onClick={() => setExpanded((value) => !value)}>
-          {expanded ? "Hide details" : "View details"}
-        </button>
-        <div className="inline-actions">
-          {!isClosed ? <AssignControl obligation={obligation} onChanged={onChanged} /> : null}
-          {typeReview ? (
-            <button className="btn btn-small btn-quiet btn-review" onClick={() => openModal("type")} title="Confirm or correct the order type">
-              Confirm type
-            </button>
+      {obligation.next_action || obligation.latest_evidence ? (
+        <dl className="ob-facts">
+          {obligation.next_action ? (
+            <div>
+              <dt>Next step</dt>
+              <dd>{obligation.next_action}</dd>
+            </div>
           ) : null}
-          {!isClosed ? (
-            <>
-              <button className="btn btn-small btn-quiet" onClick={() => openModal("evidence")} title="Add evidence (e)">
-                Add evidence
+          {obligation.latest_evidence ? (
+            <div>
+              <dt>Latest evidence</dt>
+              <dd>{obligation.latest_evidence}</dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
+
+      <div className="ob-actions">
+        {!isClosed ? (
+          <>
+            <button className="btn btn-small btn-primary" onClick={() => openModal("status")} title="Log update (u)">
+              Log update
+            </button>
+            <button className="btn btn-small" onClick={() => openModal("evidence")} title="Add evidence (e)">
+              Add evidence
+            </button>
+            {hasAppointment ? (
+              <button className="btn btn-small" onClick={() => openModal("confirm")} title="Confirm date (c)">
+                Confirm date
               </button>
-              {hasAppointment ? (
-                <button className="btn btn-small btn-quiet" onClick={() => openModal("confirm")} title="Confirm date (c)">
-                  Confirm date
-                </button>
-              ) : null}
-              <button className="btn btn-small btn-primary" onClick={() => openModal("status")} title="Log update (u)">
-                Log update
+            ) : null}
+            {typeReview ? (
+              <button className="btn btn-small" onClick={() => openModal("type")} title="Confirm or correct the order type">
+                Confirm type
               </button>
-            </>
-          ) : (
-            <span className={cx("tag", `tag-${statusTone(obligation.status)}`)}>Loop closed</span>
-          )}
-        </div>
+            ) : null}
+            <AssignControl obligation={obligation} onChanged={onChanged} />
+          </>
+        ) : (
+          <span className="tone-green ob-closed">Closed with proof</span>
+        )}
+        <button className="ob-more" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>
+          {expanded ? "Hide history" : "History and sources"}
+        </button>
       </div>
 
       {expanded ? (

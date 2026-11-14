@@ -1,9 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import type { Tone } from "../tones";
 import { useApp } from "../state";
 import type { AuditEntry } from "../types";
 import { Card, Empty, ErrorBanner, formatDateTime, Spinner, cx } from "../ui";
+
+/** Same color vocabulary as the rest of the console (src/tones.ts). */
+function auditTone(action: string): Tone {
+  const a = action.toLowerCase();
+  if (/reject|fail|escalat|overdue|missed|delete|merge/.test(a)) return "red";
+  if (/prepared|request|queued|conflict|override|review|pending/.test(a)) return "amber";
+  if (/approv|verif|confirm|resolved/.test(a)) return "green";
+  if (/conflict|override|request|review|pending/.test(a)) return "amber";
+  if (/voice|call|sms|message|contact/.test(a)) return "violet";
+  if (/ehr|ingest|fhir|hl7|document|intake|extract/.test(a)) return "blue";
+  return "neutral";
+}
 
 function pretty(value: unknown): string {
   if (value === undefined || value === null) return "—";
@@ -58,30 +71,23 @@ export function AuditPage() {
     });
   }, [entries, actionFilter, query]);
 
-  const patientName = (id: string) => dashboard?.patients.find((patient) => patient.id === id)?.name || id;
+  const [allNames, setAllNames] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    api.patients().then((r) => setAllNames(new Map(r.patients.map((p) => [p.id, p.name])))).catch(() => undefined);
+  }, []);
+  const patientName = (id: string) =>
+    id === "system" ? "System" : allNames.get(id) || dashboard?.patients.find((patient) => patient.id === id)?.name || "Removed patient";
 
   return (
     <div className="stack">
-      <header className="page-head">
+      <header className="dq-head">
         <div>
-          <p className="eyebrow">
-            <span className="eyebrow-dot" />
-            Append-only trail
-          </p>
           <h1>Audit log</h1>
-          <p className="page-sub">
-            Every extraction, status change, approval decision and voice report is recorded with actor,
-            before/after values and run identifiers.
-          </p>
+          <p>Every change anyone made, person or assistant, with the values before and after. Nothing here can be edited or deleted.</p>
         </div>
-        <div className="actions">
-          <button className="btn" onClick={load}>
-            Refresh
-          </button>
-          <Link className="btn btn-primary" to="/approvals">
-            Approvals
-          </Link>
-        </div>
+        <button className="btn" onClick={load}>
+          Refresh
+        </button>
       </header>
 
       {error ? <ErrorBanner message={error} onRetry={load} /> : null}
@@ -166,7 +172,7 @@ export function AuditPage() {
                   <span>{patientName(entry.patient_id)}</span>
                   <span className="audit-actor">{entry.actor}</span>
                   <span>
-                    <span className="tag tag-muted">{entry.action}</span>
+                    <span className={cx("tag-tone", `tone-${auditTone(entry.action)}`)}>{entry.action.replace(/[_.]/g, " ")}</span>
                   </span>
                   <span className="audit-detail">{entry.detail}</span>
                 </button>

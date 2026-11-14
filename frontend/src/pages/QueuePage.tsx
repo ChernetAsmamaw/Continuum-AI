@@ -4,6 +4,7 @@ import { api } from "../api";
 import { ApprovalCard } from "../components/ApprovalCard";
 import { useApp } from "../state";
 import type { Approval, ContactOutcome, LedgerAction, Obligation, PatientSummary, ReviewQueue } from "../types";
+import { approvalKind, type Tone } from "../tones";
 import { cx, ErrorBanner, formatDate, formatDateTime, Spinner, statusLabel } from "../ui";
 import "../queue.css";
 
@@ -61,6 +62,33 @@ function daysSince(value: string | undefined, today: Date): number {
   if (!value) return 0;
   const date = new Date(value.length === 10 ? `${value}T12:00:00` : value);
   return Math.max(0, Math.round((today.getTime() - date.getTime()) / 86400000));
+}
+
+/** What kind of work an item is, in a word or two, with its tone. */
+function kindOf(item: Item): { label: string; tone: Tone } {
+  switch (item.kind) {
+    case "approval-contact":
+      return { label: "Post-discharge call", tone: "violet" };
+    case "approval-verify":
+      return { label: "Verify completion", tone: "green" };
+    case "overdue":
+      return { label: "Overdue follow-up", tone: "red" };
+    case "conflict":
+      return { label: "Conflicting dates", tone: "amber" };
+    case "order":
+      return { label: "Confirm order type", tone: "blue" };
+    case "identity":
+      return { label: "Identity check", tone: "amber" };
+    case "action":
+      return { label: "Call or task without proof", tone: "amber" };
+    default:
+      return item.approval ? approvalKind(item.approval) : { label: "Needs a look", tone: "neutral" };
+  }
+}
+
+/** Drop the kind from the front of a title: the kind label already says it. */
+function bareTitle(title: string): string {
+  return title.replace(/^(Verify completion|Resolve conflict|Confirm order type|Follow up|Review)\s*:\s*/i, "");
 }
 
 function overdueText(days: number) {
@@ -326,11 +354,11 @@ export function QueuePage() {
             {all.length} item{all.length === 1 ? "" : "s"}
             {overdueCount ? (
               <>
-                {" · "}
+                {", "}
                 <span className="nq-red">{overdueCount} overdue</span>
               </>
             ) : null}
-            {" · overdue first, then oldest"}
+            {". Overdue first, then oldest."}
           </p>
         </header>
         <div className="nq-filters" role="tablist" aria-label="Filter the queue">
@@ -369,9 +397,10 @@ export function QueuePage() {
                     }}
                     aria-current={selected?.key === item.key}
                   >
-                    <span className={cx("nq-dot", item.overdueDays > 0 && "nq-dot-red")} aria-hidden />
+                    <span className={cx("dot", `dot-${item.overdueDays > 0 ? "red" : kindOf(item).tone}`, "nq-tdot")} aria-hidden />
                     <span className="nq-row-main">
-                      <strong>{item.title}</strong>
+                      <span className={cx("nq-kind", `tone-${kindOf(item).tone}`)}>{kindOf(item).label}</span>
+                      <strong>{item.kind === "approval-contact" ? `Call ${firstName(patient?.name)}` : bareTitle(item.title)}</strong>
                       <small>{patient?.name || item.identity?.patient.name || "Unknown patient"}</small>
                     </span>
                     <span className={cx("nq-when", item.overdueDays > 0 && "nq-red")}>{item.when}</span>
@@ -392,7 +421,7 @@ export function QueuePage() {
                 <Link to={`/patients/${o.patient_id}`}>
                   <strong>{o.description}</strong>
                   <small>
-                    {patients.get(o.patient_id)?.name} · {statusLabel(o.status).toLowerCase()} · due {formatDate(o.due_date)}
+                    {patients.get(o.patient_id)?.name}, {statusLabel(o.status).toLowerCase()}, due {formatDate(o.due_date, { year: undefined })}
                   </small>
                 </Link>
               </li>
@@ -630,7 +659,7 @@ function Focus({
           onClick: () => run(() => api.reviewOrder(order.id, suggested), "Order type confirmed."),
         };
       }
-      secondary.push({ label: "Choose another type", onClick: () => navigate("/review") });
+      secondary.push({ label: "Choose another type", onClick: () => navigate("/approvals?tab=checks") });
       break;
     }
     case "identity": {
@@ -713,10 +742,17 @@ function Focus({
   return (
     <article className="nq-item">
       <p className="nq-context">
+        <span className={cx("tag-tone", `tone-${kindOf(item).tone}`)}>{kindOf(item).label}</span>
         {item.patientId && name ? <Link to={`/patients/${item.patientId}`}>{name}</Link> : null}
-        {patient ? ` · ${patient.age} · MRN ${patient.mrn} · ${patient.condition}` : null}
+        {patient ? (
+          <span className="nq-facts">
+            <span>{patient.age} years</span>
+            <span>{patient.condition}</span>
+            {patient.mrn && /^[A-Z]{1,3}-?\d{3,}$/.test(patient.mrn) ? <span className="nq-mrn">{patient.mrn}</span> : null}
+          </span>
+        ) : null}
       </p>
-      <h2>{item.kind === "approval-contact" ? `Post-discharge call to ${first}` : item.title}</h2>
+      <h2>{item.kind === "approval-contact" ? `Post-discharge call to ${first}` : bareTitle(item.title)}</h2>
       {item.overdueDays > 0 && item.overdueDays < 900 ? <p className="nq-status nq-red">{overdueText(item.overdueDays)}</p> : null}
       {a?.urgency ? <p className="nq-status nq-red">{a.urgency === "emergency" ? "Emergency" : "Urgent"}</p> : null}
       {o?.assignee ? <p className="nq-assignee">Assigned to {o.assignee.name}</p> : null}

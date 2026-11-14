@@ -3,34 +3,25 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useApp } from "../state";
 import type { IngestJob, IngestStepName } from "../types";
-import { Card, Empty, ErrorBanner, formatDateTime, relativeDate, Spinner, cx } from "../ui";
+import { ErrorBanner, Spinner, cx, formatDateTime, relativeDate } from "../ui";
+
+/**
+ * Imports: discharges that arrived from the hospital record. One row per
+ * import in plain words; the five steps are a small bar. Technical detail
+ * (job ids, workers, HL7) is one click away, not on the surface.
+ */
 
 const STEPS: IngestStepName[] = ["pull", "identify", "structured", "narrative", "verify"];
 
-const STEP_LABELS: Record<IngestStepName, string> = {
-  pull: "Pull",
-  identify: "Identify",
-  structured: "Structured",
-  narrative: "Narrative",
-  verify: "Verify",
+const STEP_NAME: Record<IngestStepName, string> = {
+  pull: "Pulled from the hospital record",
+  identify: "Matched to a patient",
+  structured: "Follow-ups from orders",
+  narrative: "Read the discharge summary",
+  verify: "Checked everything was saved",
 };
 
-const STEP_HELP: Record<IngestStepName, string> = {
-  pull: "Fetch the stay from the EHR (FHIR)",
-  identify: "Match or create the patient and episode",
-  structured: "Follow-ups from orders, bookings, pending results",
-  narrative: "AI extraction from the discharge summary",
-  verify: "Re-read every write from the database",
-};
-
-const JOB_TONE: Record<string, string> = { done: "green", failed: "danger", running: "blue", queued: "neutral" };
-const JOB_LABEL: Record<string, string> = { done: "Done", failed: "Failed", running: "Running", queued: "Queued" };
-
-/**
- * Which step a resumed job restarted from. Steps only run once unless retried,
- * so a retried step has attempts > 1; a crash-resume shows up as a later step
- * run by a different worker process than the one that pulled.
- */
+/** Which step a resumed job restarted from. */
 export function resumedFrom(job: IngestJob, hint?: string | null): IngestStepName | null {
   if (hint && STEPS.includes(hint as IngestStepName)) return hint as IngestStepName;
   if ((job.attempts || 0) <= 1) return null;
@@ -49,178 +40,191 @@ export function canResume(job: IngestJob): boolean {
   return job.status === "running" && leaseExpired(job);
 }
 
-export function StepStrip({ job, resumed }: { job: IngestJob; resumed?: IngestStepName | null }) {
+function stepState(job: IngestJob, step: IngestStepName): "done" | "failed" | "running" | "pending" {
+  const s = job.steps[step]?.status || "pending";
+  return s === "running" && job.status !== "running" ? "failed" : s;
+}
+
+/** Step summaries are written for logs; say the same thing in plain words. */
+function plainStep(step: IngestStepName, text?: string): string {
+  if (!text) return "";
+  let m: RegExpMatchArray | null;
+  if (step === "pull" && (m = text.match(/(\d+) orders?, (\d+) appointments?, (\d+) pending results?, (\d+) meds?/)))
+    return `${m[1]} orders, ${m[2]} appointments, ${m[3]} pending results and ${m[4]} medications`;
+  if (step === "identify") {
+    if (text.startsWith("new_patient")) return "No match found, so a new patient record was created";
+    if (text.startsWith("matched") || text.includes("existing")) return "Matched an existing patient";
+    if (text.includes("review")) return "Possible duplicate: held for an identity check";
+  }
+  if (step === "structured" && (m = text.match(/(\d+) created, (\d+) already tracked/)))
+    return `${m[1]} follow-ups created${Number(m[2]) ? `, ${m[2]} were already tracked` : ""}`;
+  if (step === "narrative" && (m = text.match(/(\d+) from narrative/)))
+    return Number(m[1]) ? `${m[1]} more follow-up${m[1] === "1" ? "" : "s"} found that the orders missed` : "Nothing new beyond the orders";
+  if (step === "verify") return "Every follow-up was read back from the database";
+  return text.replace(/_/g, " ");
+}
+
+function plainSource(source: string): string {
+  const s = (source || "").toLowerCase();
+  if (s.includes("hl7")) return "Discharge message from the hospital";
+  if (s.includes("fhir") || s.includes("pull")) return "Pulled from the hospital record";
+  if (s.includes("manual")) return "Started by a coordinator";
+  return source || "Import";
+}
+
+function outcome(job: IngestJob): { text: string; tone: string } {
+  if (job.status === "failed") return { text: "Stopped", tone: "red" };
+  if (job.status === "running") return canResume(job) ? { text: "Stalled", tone: "red" } : { text: "Running", tone: "blue" };
+  if (job.status === "queued") return { text: "Queued", tone: "neutral" };
+  if (job.result?.identity_review) return { text: "Check identity", tone: "amber" };
+  return { text: "Imported", tone: "green" };
+}
+
+function StepBar({ job, resumed }: { job: IngestJob; resumed: IngestStepName | null }) {
   return (
-    <ol className="step-strip" aria-label="Ingestion steps">
-      {STEPS.map((step, index) => {
-        const state = job.steps[step] || { status: "pending", attempts: 0 };
-        const status = state.status === "running" && job.status !== "running" ? "failed" : state.status;
-        return (
-          <li
-            key={step}
-            className={cx("step", `step-${status}`, resumed === step && "step-resumed")}
-            title={`${STEP_HELP[step]}${state.summary ? `\n${state.summary}` : ""}${state.error ? `\nError: ${state.error}` : ""}`}
-          >
-            <span className="step-bar" />
-            <span className="step-label">
-              <b>
-                {index + 1}. {STEP_LABELS[step]}
-              </b>
-              {state.attempts > 1 ? <em className="step-attempts">×{state.attempts}</em> : null}
-            </span>
-            <small className="step-state">
-              {status === "failed"
-                ? state.attempts > 1 ? "Failed again" : "Failed"
-                : resumed === step
-                  ? status === "done" ? "Resumed here · done" : "Resumed here"
-                  : status === "done" ? "Done" : status === "running" ? "Running" : "Pending"}
-            </small>
-          </li>
-        );
-      })}
-    </ol>
+    <span className="im-bar" role="img" aria-label={STEPS.map((s) => `${STEP_NAME[s]}: ${stepState(job, s)}`).join(", ")}>
+      {STEPS.map((s) => (
+        <i key={s} className={cx(`im-seg-${stepState(job, s)}`, resumed === s && "im-seg-resumed")} />
+      ))}
+    </span>
   );
 }
 
-function JobCard({ job, patientName, onResumed }: { job: IngestJob; patientName?: string; onResumed: () => void }) {
+function ImportRow({ job, name, onResumed }: { job: IngestJob; name?: string; onResumed: () => void }) {
   const { notify } = useApp();
-  const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(job.status === "failed");
+  const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
   const resumed = resumedFrom(job, hint);
-  const failedStep = STEPS.find((step) => job.steps[step]?.status === "failed");
+  const failed = STEPS.find((s) => stepState(job, s) === "failed");
+  const state = outcome(job);
   const patientId = job.patient_id || job.result?.patient_id;
-  const source = (job.source || "").toLowerCase().includes("hl7")
-    ? "HL7 ADT^A03 → FHIR pull"
-    : (job.source || "").toLowerCase() === "fhir"
-      ? "FHIR pull"
-      : job.source;
+  const known = Boolean(name);
+  const label = name || (patientId ? "Patient record removed" : String(job.params?.patient_fhir_id || "Unidentified patient"));
+  const orders = Array.isArray(job.result?.created) ? (job.result!.created as unknown[]).length : null;
+  const fromSummary = Array.isArray(job.result?.ai_created) ? (job.result!.ai_created as unknown[]).length : 0;
+  const resultText =
+    orders !== null
+      ? `${orders + fromSummary} follow-ups: ${orders} from orders${fromSummary ? `, ${fromSummary} found in the discharge summary` : ""}`
+      : job.result?.summary || "In progress";
 
   const resume = async () => {
     setBusy(true);
     try {
       const result = await api.resumeJob(job.id);
       setHint(result.resumed_from || null);
-      if (result.status === "done") notify(`Job finished${result.resumed_from ? `, resumed from ${result.resumed_from}` : ""}.`);
-      else if (result.status === "failed") notify(`Still failing at ${result.failed_step}: ${result.error}`);
-      else notify(result.detail || `Job is ${result.status}.`);
+      if (result.status === "done") notify(`Import finished${result.resumed_from ? `, picked up at "${STEP_NAME[result.resumed_from as IngestStepName] || result.resumed_from}"` : ""}.`);
+      else if (result.status === "failed") notify(`Still stopping at ${result.failed_step}: ${result.error}`);
+      else notify(result.detail || `Import is ${result.status}.`);
       onResumed();
     } catch (err) {
-      notify(err instanceof Error ? err.message : "Could not resume the job.");
+      notify(err instanceof Error ? err.message : "Could not resume the import.");
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <article className={cx("job-card", `job-${job.status}`)}>
-      <header className="job-head">
-        <div className="job-title">
-          <strong>
-            {patientId ? (
-              <Link to={`/patients/${patientId}`}>{patientName || patientId}</Link>
-            ) : (
-              <span>{String(job.params?.patient_fhir_id || (job.params?.patient_identifiers as string[] | undefined)?.[0] || "Unidentified patient")}</span>
-            )}
-          </strong>
-          <small>
-            {source} · {formatDateTime(job.created_at)} · {job.id}
-          </small>
-        </div>
-        <div className="job-meta">
-          <span className="tag tag-muted" title="Times a worker claimed this job">
-            {job.attempts} {job.attempts === 1 ? "attempt" : "attempts"}
-          </span>
-          {resumed ? <span className="tag tag-blue">Resumed from {STEP_LABELS[resumed]}</span> : null}
-          {job.result?.identity_review ? (
-            <Link to="/review" className="tag tag-amber">
-              Identity review
-            </Link>
-          ) : null}
-          <span className={cx("pill", `pill-${JOB_TONE[job.status] || "neutral"}`)}>
-            <span className="pill-dot" />
-            {JOB_LABEL[job.status] || job.status}
-          </span>
-        </div>
-      </header>
+    <li className={cx("im-row", `im-${state.tone}`, open && "im-open")}>
+      <button type="button" className="im-main" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <span className={cx("dot", `dot-${state.tone}`)} aria-hidden="true" />
+        <span className="im-who">
+          <b className={cx(!known && "muted")}>{label}</b>
+          <small>{plainSource(job.source)}</small>
+        </span>
+        <span className="im-result">{failed ? <span className="tone-red">Stopped at: {STEP_NAME[failed].toLowerCase()}</span> : resultText}</span>
+        <StepBar job={job} resumed={resumed} />
+        <span className="im-when">{formatDateTime(job.created_at)}</span>
+        <span className={cx("im-state", `tone-${state.tone}`)}>{state.text}</span>
+      </button>
 
-      <StepStrip job={job} resumed={resumed} />
-
-      {job.status === "failed" || failedStep ? (
-        <div className="job-failure">
-          <div>
-            <strong>Failed at {failedStep ? STEP_LABELS[failedStep] : job.current_step || "a step"}</strong>
-            <p>{(failedStep && job.steps[failedStep].error) || job.error || "No error recorded."}</p>
-            <small>Finished steps are checkpointed; resuming continues from the first unfinished step without re-fetching.</small>
-          </div>
-          {canResume(job) ? (
-            <button className="btn btn-small btn-primary" onClick={resume} disabled={busy}>
-              {busy ? "Resuming…" : "Resume"}
-            </button>
-          ) : null}
-        </div>
-      ) : canResume(job) ? (
-        <div className="job-failure job-stalled">
-          <div>
-            <strong>{job.status === "queued" ? "Queued" : "Stalled"}</strong>
-            <p>
-              {job.status === "queued"
-                ? "Waiting for a worker."
-                : `The worker's lease expired ${relativeDate(job.lease_until)}; it likely crashed mid-job.`}
-            </p>
-          </div>
-          <button className="btn btn-small btn-primary" onClick={resume} disabled={busy}>
-            {busy ? "Resuming…" : "Resume"}
-          </button>
-        </div>
-      ) : null}
-
-      <div className="job-foot">
-        <button className="link-button" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-          {open ? "Hide step details" : "Step details"}
-        </button>
-        {job.result?.summary ? <span className="job-summary">{job.result.summary}</span> : null}
-      </div>
+      {resumed && !open ? <p className="im-note tone-violet">Recovered after a restart. It picked up at "{STEP_NAME[resumed].toLowerCase()}" without redoing earlier steps.</p> : null}
 
       {open ? (
-        <dl className="kv job-steps">
-          {STEPS.map((step) => {
-            const state = job.steps[step];
-            return (
-              <div key={step}>
-                <dt>
-                  {STEP_LABELS[step]}
-                  {state?.attempts ? <small> · {state.attempts}×</small> : null}
-                </dt>
-                <dd>
-                  {state?.error ? <span className="text-danger">{state.error}</span> : state?.summary || <span className="muted">{STEP_HELP[step]}</span>}
-                  {state?.finished_at ? <small> · {formatDateTime(state.finished_at)}</small> : null}
-                  {state?.worker ? <small> · {state.worker}</small> : null}
-                </dd>
+        <div className="im-detail">
+          {(job.status === "failed" || failed || canResume(job)) && job.status !== "done" ? (
+            <div className="im-alert">
+              <div>
+                <b>
+                  {failed ? `Stopped at "${STEP_NAME[failed].toLowerCase()}"` : job.status === "queued" ? "Waiting for a worker" : "The worker stopped responding"}
+                </b>
+                <p>
+                  {(failed && job.steps[failed].error) ||
+                    job.error ||
+                    (job.status === "running" ? `Its lease expired ${relativeDate(job.lease_until)}.` : "No error was recorded.")}
+                </p>
+                <small>Resuming starts at the first unfinished step. Finished steps are not repeated.</small>
               </div>
-            );
-          })}
-        </dl>
+              {canResume(job) ? (
+                <button className="btn btn-primary" onClick={resume} disabled={busy}>
+                  {busy ? "Resuming…" : "Resume import"}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          <ol className="im-steps">
+            {STEPS.map((s) => {
+              const st = stepState(job, s);
+              const info = job.steps[s];
+              const tone = st === "done" ? "green" : st === "failed" ? "red" : st === "running" ? "blue" : "neutral";
+              return (
+                <li key={s}>
+                  <span className={cx("dot", `dot-${tone}`)} aria-hidden="true" />
+                  <span className="im-step-name">
+                    {STEP_NAME[s]}
+                    {resumed === s ? <span className="tag-tone tone-violet">Picked up here</span> : null}
+                    {info?.attempts > 1 ? <span className="tag-tone tone-amber">Tried {info.attempts} times</span> : null}
+                  </span>
+                  <span className={cx("im-step-info", st === "failed" && "tone-red")}>{info?.error || plainStep(s, info?.summary) || (st === "pending" ? "Not started" : "")}</span>
+                  <span className="im-step-time">{info?.finished_at ? formatDateTime(info.finished_at) : ""}</span>
+                </li>
+              );
+            })}
+          </ol>
+          <div className="im-foot">
+            {patientId && known ? <Link to={`/patients/${patientId}`}>Open {name}</Link> : null}
+            {job.result?.identity_review ? <Link to="/approvals?tab=checks" className="tone-amber">Check the identity match</Link> : null}
+            <details className="im-tech">
+              <summary>Technical details</summary>
+              <dl>
+                <dt>Import</dt>
+                <dd>{job.id}</dd>
+                <dt>Source</dt>
+                <dd>{job.source}</dd>
+                <dt>Attempts</dt>
+                <dd>{job.attempts}</dd>
+                {STEPS.filter((s) => job.steps[s]?.worker).map((s) => (
+                  <div key={s} className="im-tech-row">
+                    <dt>{STEP_NAME[s]}</dt>
+                    <dd>{job.steps[s].worker}</dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
+          </div>
+        </div>
       ) : null}
-    </article>
+    </li>
   );
 }
 
-type JobFilter = "all" | "attention" | "done";
+type Filter = "all" | "attention" | "done";
 
 export function IngestionPage() {
   const { dashboard, refreshKey } = useApp();
   const [jobs, setJobs] = useState<IngestJob[] | null>(null);
+  const [names, setNames] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<JobFilter>("all");
+  const [filter, setFilter] = useState<Filter>("all");
 
   const load = useCallback(async () => {
     try {
-      const data = await api.ingestJobs();
+      const [data, patients] = await Promise.all([api.ingestJobs(), api.patients().catch(() => null)]);
       setJobs(data.jobs);
+      if (patients) setNames(new Map(patients.patients.map((p) => [p.id, p.name])));
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load ingestion jobs.");
+      setError(err instanceof Error ? err.message : "Could not load imports.");
     }
   }, []);
 
@@ -228,73 +232,64 @@ export function IngestionPage() {
     void load();
   }, [load, refreshKey]);
 
-  const names = useMemo(() => new Map((dashboard?.patients || []).map((p) => [p.id, p.name])), [dashboard]);
+  const nameOf = useMemo(() => {
+    const fromDash = new Map((dashboard?.patients || []).map((p) => [p.id, p.name]));
+    return (id?: string) => (id ? names.get(id) || fromDash.get(id) : undefined);
+  }, [names, dashboard]);
 
-  if (!jobs) return error ? <ErrorBanner message={error} onRetry={load} /> : <Spinner label="Loading ingestion jobs" />;
+  if (!jobs) return error ? <ErrorBanner message={error} onRetry={load} /> : <Spinner label="Loading imports" />;
 
-  const attention = jobs.filter((job) => job.status !== "done");
-  const visible = filter === "attention" ? attention : filter === "done" ? jobs.filter((job) => job.status === "done") : jobs;
-  const resumedCount = jobs.filter((job) => resumedFrom(job)).length;
+  const attention = jobs.filter((j) => j.status !== "done" || j.result?.identity_review);
+  const done = jobs.filter((j) => j.status === "done");
+  const recovered = jobs.filter((j) => resumedFrom(j)).length;
+  const visible = filter === "attention" ? attention : filter === "done" ? done : jobs;
 
   return (
-    <div className="stack">
-      <header className="page-head">
+    <div className="im">
+      <header className="dq-head">
         <div>
-          <p className="eyebrow">
-            <span className="eyebrow-dot" />
-            EHR ingestion
-          </p>
-          <h1>Discharges from the EHR</h1>
-          <p className="page-sub">
-            Each discharge runs as a checkpointed job: pull → identify → structured → narrative → verify. A crash resumes from the
-            first unfinished step; nothing finished is redone.
-          </p>
+          <h1>Imports</h1>
+          <p>Discharges that arrive from the hospital record. Each one is matched to a patient, turned into follow-ups, and checked before it counts.</p>
         </div>
       </header>
 
       {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 
-      <section className="metric-row metric-row-3" aria-label="Ingestion summary">
-        <div className="metric">
-          <span className="metric-label">Recent jobs</span>
-          <strong className="metric-value">{jobs.length}</strong>
-          <span className="metric-note">{jobs.filter((job) => job.status === "done").length} finished and verified</span>
+      <div className="im-summary">
+        <span className="flag tone-green">{done.length} imported</span>
+        <span className={cx("flag", attention.length ? "tone-red" : "tone-neutral")}>{attention.length ? `${attention.length} need attention` : "Nothing stuck"}</span>
+        {recovered ? <span className="flag tone-violet">{recovered} recovered after a restart</span> : null}
+        <div className="seg im-filter" role="tablist">
+          {(["all", "attention", "done"] as Filter[]).map((f) => (
+            <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}>
+              {f === "all" ? "All" : f === "attention" ? "Needs attention" : "Imported"}
+            </button>
+          ))}
         </div>
-        <button className={cx("metric", attention.length > 0 && "metric-danger")} onClick={() => setFilter("attention")}>
-          <span className="metric-label">Failed or unfinished</span>
-          <strong className="metric-value">{attention.length}</strong>
-          <span className="metric-note">{attention.length ? "Resume to continue from the checkpoint" : "Nothing stuck"}</span>
-        </button>
-        <div className="metric">
-          <span className="metric-label">Resumed or retried</span>
-          <strong className="metric-value">{resumedCount}</strong>
-          <span className="metric-note">Picked up from the checkpoint, completed steps not replayed</span>
-        </div>
-      </section>
+      </div>
 
-      <Card
-        title="Ingestion jobs"
-        subtitle="Newest first. Hover a step for what it did."
-        action={
-          <div className="tabs">
-            {(["all", "attention", "done"] as JobFilter[]).map((item) => (
-              <button key={item} className={cx("tab", filter === item && "tab-active")} onClick={() => setFilter(item)} aria-pressed={filter === item}>
-                {item === "all" ? `All ${jobs.length}` : item === "attention" ? `Needs attention ${attention.length}` : "Done"}
-              </button>
-            ))}
+      {visible.length === 0 ? (
+        <div className="dq-empty">
+          <h2>{jobs.length === 0 ? "No discharges have arrived yet." : "Nothing in this view."}</h2>
+          <p>{jobs.length === 0 ? "When the hospital sends a discharge, it appears here within a few seconds." : "Switch to All to see every import."}</p>
+        </div>
+      ) : (
+        <section className="im-panel">
+          <div className="im-cols" aria-hidden="true">
+            <span />
+            <span>Patient</span>
+            <span>Result</span>
+            <span>Steps</span>
+            <span>Arrived</span>
+            <span />
           </div>
-        }
-      >
-        {visible.length === 0 ? (
-          <Empty>{jobs.length === 0 ? "No discharges have arrived from the EHR yet." : "Nothing in this view."}</Empty>
-        ) : (
-          <div className="job-list">
+          <ul className="im-list">
             {visible.map((job) => (
-              <JobCard key={job.id} job={job} patientName={names.get(job.patient_id || "")} onResumed={load} />
+              <ImportRow key={job.id} job={job} name={nameOf(job.patient_id || job.result?.patient_id)} onResumed={load} />
             ))}
-          </div>
-        )}
-      </Card>
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

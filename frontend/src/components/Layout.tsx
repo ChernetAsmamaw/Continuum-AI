@@ -112,7 +112,7 @@ function Icon({ name, className }: { name: IconName; className?: string }) {
   }
 }
 
-type NavItem = { to: string; label: string; icon: IconName; end?: boolean; badge?: "queue" | "approvals" | "review" | "attention" };
+type NavItem = { to: string; label: string; icon: IconName; end?: boolean; badge?: "queue" | "approvals" | "review" | "attention" | "decisions" };
 
 const NAV: NavItem[] = [
   { to: "/console", label: "Needs you", icon: "work", end: true, badge: "queue" },
@@ -124,20 +124,18 @@ const NAV: NavItem[] = [
 const ACTIVITY: NavItem[] = [
   { to: "/actions", label: "Calls and tasks", icon: "ledger", badge: "attention" },
   { to: "/ingestion", label: "Imports", icon: "database" },
-  { to: "/review", label: "Order and ID checks", icon: "shield", badge: "review" },
-  { to: "/approvals", label: "Decisions", icon: "approvals" },
+  { to: "/approvals", label: "Decisions", icon: "approvals", badge: "decisions" },
   { to: "/audit", label: "Audit log", icon: "audit" },
-  { to: "/overview", label: "Overview and demo", icon: "overview" },
+  { to: "/overview", label: "Demo", icon: "overview" },
 ];
 
 function sectionLabel(pathname: string): string {
   if (pathname === "/console") return "Needs you";
-  if (pathname === "/overview") return "Overview";
+  if (pathname === "/overview") return "Demo";
   if (pathname === "/patients/new") return "Add a discharge";
   if (pathname.startsWith("/patients")) return "Patients";
   if (pathname.startsWith("/work")) return "Assigned to me";
   if (pathname.startsWith("/approvals")) return "Decisions";
-  if (pathname.startsWith("/review")) return "Order and ID checks";
   if (pathname.startsWith("/actions")) return "Calls and tasks";
   if (pathname.startsWith("/ingestion")) return "Imports";
   if (pathname.startsWith("/audit")) return "Audit log";
@@ -254,7 +252,7 @@ export function Layout() {
   const paletteActions = useMemo<PaletteAction[]>(
     () => [
       { id: "queue", label: "Go to Needs you", icon: "overview", keys: ["g", "d"], run: () => navigate("/console") },
-      { id: "overview", label: "Go to Overview and demo", icon: "overview", run: () => navigate("/overview") },
+      { id: "overview", label: "Go to Demo", icon: "overview", run: () => navigate("/overview") },
       { id: "patients", label: "Go to Patients", icon: "users", keys: ["g", "p"], run: () => navigate("/patients") },
       { id: "approvals", label: "Go to Decisions", icon: "check", keys: ["g", "a"], run: () => navigate("/approvals") },
       { id: "audit", label: "Go to Audit log", icon: "document", keys: ["g", "l"], run: () => navigate("/audit") },
@@ -275,6 +273,7 @@ export function Layout() {
   const badgeFor = (badge: NavItem["badge"]) => {
     if (badge === "queue") return queueCount > 0 ? <b>{queueCount}</b> : null;
     if (badge === "review") return (ops?.review ?? 0) > 0 ? <b>{ops?.review}</b> : null;
+    if (badge === "decisions") return pending + (ops?.review ?? 0) > 0 ? <b className="nav-amber">{pending + (ops?.review ?? 0)}</b> : null;
     if (badge === "attention") return (ops?.attention ?? 0) > 0 ? <b>{ops?.attention}</b> : null;
     return null;
   };
@@ -442,7 +441,7 @@ export function Layout() {
         </main>
 
         <footer className="app-footer">
-          <span>Continuum · MongoDB Agents in Context</span>
+          <span>Continuum</span>
           <span>Administrative coordination only. No diagnosis, prescribing or treatment changes.</span>
         </footer>
       </div>

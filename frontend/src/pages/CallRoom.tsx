@@ -49,6 +49,14 @@ function effectLine(e: CallEffect): { title: string; body: string; tone: string 
   }
 }
 
+/** +14165550142 → +1 416 555 0142; anything else is shown as typed. */
+export function formatPhone(phone: string): string {
+  const d = phone.replace(/[^\d+]/g, "");
+  const m = d.match(/^\+?1?(\d{3})(\d{3})(\d{4})$/);
+  const note = phone.match(/\(([^)]+)\)\s*$/);
+  return m ? `+1 ${m[1]} ${m[2]} ${m[3]}${note ? ` (${note[1]})` : ""}` : phone;
+}
+
 function telHref(phone: string): string | null {
   const digits = phone.replace(/[^\d+]/g, "");
   return digits.length >= 7 ? `tel:${digits}` : null;
@@ -70,7 +78,15 @@ function WhoCard({ patient, brief, phone }: { patient: Patient | null; brief: Ca
           {patient?.pronouns ? <small>{patient.pronouns}</small> : null}
         </h2>
         <p className="call-who-meta">
-          {patient ? `${patient.age} · ${patient.condition} · MRN ${patient.mrn}` : "Loading the record…"}
+          {patient ? (
+            <span className="nq-facts">
+              <span>{patient.age} years</span>
+              <span>{patient.condition}</span>
+              <span className="nq-mrn">{patient.mrn}</span>
+            </span>
+          ) : (
+            "Loading the record…"
+          )}
         </p>
         <dl className="call-who-facts">
           <div>
@@ -81,7 +97,7 @@ function WhoCard({ patient, brief, phone }: { patient: Patient | null; brief: Ca
             <dt>Language</dt>
             <dd>
               {brief.language || prefs.language || "English"}
-              {prefs.interpreter_needed ? " · interpreter" : ""}
+              {prefs.interpreter_needed ? ", interpreter" : ""}
             </dd>
           </div>
           <div>
@@ -95,7 +111,7 @@ function WhoCard({ patient, brief, phone }: { patient: Patient | null; brief: Ca
             <dt>Consent</dt>
             <dd>
               {brief.consent_to_automated_calls ? "Automated calls" : "No automated calls"}
-              {brief.consent_to_recording ? " · recording" : " · no recording"}
+              {brief.consent_to_recording ? ", recording" : ", no recording"}
             </dd>
           </div>
           {caregiver?.name || patient?.caregiver ? (
@@ -103,7 +119,7 @@ function WhoCard({ patient, brief, phone }: { patient: Patient | null; brief: Ca
               <dt>Caregiver</dt>
               <dd>
                 {caregiver?.name || patient?.caregiver}
-                {caregiver?.phone ? ` · ${caregiver.phone}` : ""}
+                {caregiver?.phone ? `, ${caregiver.phone}` : ""}
               </dd>
             </div>
           ) : null}
@@ -120,10 +136,10 @@ function WhoCard({ patient, brief, phone }: { patient: Patient | null; brief: Ca
         {number ? (
           tel ? (
             <a className="call-who-number" href={tel}>
-              {number}
+              {formatPhone(number)}
             </a>
           ) : (
-            <span className="call-who-number">{number}</span>
+            <span className="call-who-number">{formatPhone(number)}</span>
           )
         ) : (
           <span className="call-who-number call-who-number-missing">No number on file</span>
@@ -148,7 +164,8 @@ export function CallRoom() {
   const [error, setError] = useState<string | null>(null);
   const [ledger, setLedger] = useState<LedgerAction | null>(null);
   const [, tick] = useState(0);
-  const transcriptEnd = useRef<HTMLDivElement | null>(null);
+  const transcriptBox = useRef<HTMLDivElement | null>(null);
+  const [picking, setPicking] = useState(false);
 
   // The app-wide call wins when it belongs to this patient; otherwise show the last one.
   const session = call.session && call.session.patient_id === patientId ? call.session : recent;
@@ -198,7 +215,9 @@ export function CallRoom() {
   }, [session?.id, session?.status, session?.events.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    transcriptEnd.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // Scroll the transcript itself; scrolling the page would jump it on load.
+    const box = transcriptBox.current;
+    if (box) box.scrollTop = box.scrollHeight;
   }, [session?.events.length]);
 
   useEffect(() => {
@@ -250,25 +269,31 @@ export function CallRoom() {
 
   return (
     <div className="call-room">
+      <nav className="breadcrumb" aria-label="Breadcrumb">
+        <Link to="/patients">Patients</Link>
+        <span aria-hidden="true">/</span>
+        <Link to={`/patients/${patientId}`}>{brief.patient_name}</Link>
+      </nav>
       <div className="call-head">
         <div>
-          <p className="eyebrow">
-            <Link to={`/patients/${patientId}`}>{brief.patient_name}</Link> · Call room
-          </p>
-          <h1>{live ? "On the call" : session ? "Last call" : "Start a check-in call"}</h1>
+          <h1>{live ? `On a call with ${brief.patient_name?.split(" ")[0]}` : session ? "Last call" : "Start a check-in call"}</h1>
           <p className="muted">
             {live
               ? "Leaving this page does not end the call. A bar at the bottom brings you back."
-              : "The agent's brief, the conversation and what each answer changes, side by side."}
+              : "What the agent will raise, the conversation, and what each answer changed."}
           </p>
         </div>
         {session ? (
           <div className="call-status">
-            <span className={cx("call-pill", `call-pill-${session.status}`)}>
-              {session.status === "live" ? "● Live" : session.status}
-              {" · "}
-              {MODE_COPY[session.mode].title}
+            <span
+              className={cx(
+                "flag",
+                session.status === "live" ? "tone-red" : session.status === "failed" ? "tone-red" : session.status === "ended" ? "tone-green" : "tone-amber",
+              )}
+            >
+              {session.status === "live" ? "Live" : session.status === "ended" ? "Ended" : session.status === "failed" ? "Failed" : "Connecting"}
             </span>
+            <span className="muted">{MODE_COPY[session.mode].title} call</span>
             <span className="call-timer">{elapsed(session.started_at || session.created_at, session.ended_at)}</span>
             {live ? (
               <button className="btn btn-danger-ghost" onClick={end} disabled={busy}>
@@ -294,7 +319,15 @@ export function CallRoom() {
         </div>
       ) : null}
 
-      {!live ? (
+      {!live && session && !picking ? (
+        <div className="call-again">
+          <button type="button" className="btn" onClick={() => setPicking(true)} disabled={!!otherCall}>
+            Start another call
+          </button>
+        </div>
+      ) : null}
+
+      {!live && (!session || picking) ? (
         <Card title={session ? "Start another call" : "How should this call happen?"}>
           <div className="call-modes" role="radiogroup" aria-label="Call mode">
             {(["simulated", "browser", "phone"] as CallMode[]).map((m) => {
@@ -371,7 +404,7 @@ export function CallRoom() {
               {live ? "Connecting…" : "The conversation appears here as it happens, with each action the agent takes."}
             </p>
           ) : (
-            <div className="call-transcript">
+            <div className="call-transcript" ref={transcriptBox}>
               {turns.map((e) =>
                 e.kind === "transcript" ? (
                   <div key={e.id} className={cx("call-turn", `call-turn-${e.role}`)}>
@@ -385,7 +418,6 @@ export function CallRoom() {
                   </div>
                 ),
               )}
-              <div ref={transcriptEnd} />
             </div>
           )}
           {live && session?.mode === "browser" ? (

@@ -11,6 +11,11 @@ function asArray(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
 }
 
+/** Memory text is stored as Markdown; show it as plain words in a list. */
+function plain(value: string): string {
+  return value.replace(/\*\*|__|`/g, "").replace(/\s+-\s+/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function text(value: unknown): string {
   if (value === undefined || value === null || value === "") return "—";
   if (typeof value === "string") return value;
@@ -72,42 +77,17 @@ export function Inspector() {
         <span aria-hidden="true">/</span>
         <Link to={`/patients/${patient.id}`}>{patient.name}</Link>
         <span aria-hidden="true">/</span>
-        <span>Agent workspace</span>
+        <span>How decisions were made</span>
       </nav>
 
-      <header className="page-head inspector-head">
+      <header className="dq-head">
         <div>
-          <p className="eyebrow">
-            <span className="eyebrow-dot" />
-            Agent workspace
-          </p>
-          <h1>
-            <Link to={`/patients/${patient.id}`} className="heading-link">
-              {patient.name}
-            </Link>{" "}
-            · coordination inspector
-          </h1>
-          <p className="page-sub">
-            Inspect the LangGraph run, retrieval, extraction and human-in-the-loop checkpoints behind every
-            reply.
-          </p>
-          <div className="tag-row">
-            <RiskBadge risk={patient.risk} />
-            <span className="tag tag-muted">{patient.condition}</span>
-            <span className="tag tag-muted">MRN {patient.mrn}</span>
-            <span className="tag tag-muted">
-              {journey.obligations.filter((obligation) => obligation.is_open).length} open loops
-            </span>
-          </div>
+          <h1>How decisions were made for {patient.name.split(" ")[0]}</h1>
+          <p>Ask the assistant something and see what it understood, which records it checked, and what it proposed. Technical detail is at the bottom of each panel.</p>
         </div>
-        <div className="actions">
-          <Link className="btn" to={`/patients/${patient.id}`}>
-            Patient journey
-          </Link>
-          <Link className="btn btn-primary" to="/approvals">
-            Approvals{pending.length ? ` (${pending.length})` : ""}
-          </Link>
-        </div>
+        <Link className="btn" to={`/patients/${patient.id}`}>
+          Back to {patient.name.split(" ")[0]}
+        </Link>
       </header>
 
       {error ? <ErrorBanner message={error} onRetry={load} /> : null}
@@ -116,6 +96,8 @@ export function Inspector() {
         <ChatPanel
           patientId={patient.id}
           patientName={patient.name}
+          title="Ask the assistant"
+          subtitle="Answers use this patient's records only"
           onResult={(nextResult, nextThread) => {
             setResult(nextResult);
             if (nextThread) setThread(nextThread);
@@ -124,7 +106,7 @@ export function Inspector() {
         />
 
         <aside className="stack">
-          <Card title="LangGraph checkpoint" subtitle="Persistent state per patient thread">
+          <Card title="Where the assistant is" subtitle="Saved after every step, so a paused run picks up exactly where it stopped">
             <div className="thread-status">
               <span className={cx("tag", thread?.paused ? "tag-amber" : "tag-green")}>
                 <span className={cx("dot", thread?.paused ? "dot-amber" : "dot-green")} />
@@ -154,7 +136,7 @@ export function Inspector() {
           </Card>
 
           {result ? (
-            <Card title="Extraction trace" subtitle={`Run ${result.run_id || "—"}`}>
+            <Card title="What it understood" subtitle={`Run ${result.run_id || "—"}`}>
               <div className="trace-meta">
                 <span className={cx("tag", result.status === "awaiting_approval" ? "tag-amber" : "tag-green")}>
                   {result.status.replace(/_/g, " ")}
@@ -259,7 +241,7 @@ export function Inspector() {
               ) : null}
             </Card>
           ) : (
-            <Card title="Extraction trace" subtitle="Inspect what the agent understood">
+            <Card title="What it understood" subtitle="Inspect what the agent understood">
               <p className="empty">
                 Send a message to see the extraction, validation notes and retrieved memory behind the reply.
               </p>
@@ -267,7 +249,7 @@ export function Inspector() {
           )}
 
           <Card
-            title="Retrieved context"
+            title="What it remembered"
             subtitle={result?.retrieval?.counts ? `${result.retrieval.counts.memories ?? 0} memories · ${result.retrieval.counts.evidence ?? 0} evidence` : "Atlas memory"}
           >
             {retrievalMemories.length === 0 ? (
@@ -277,7 +259,7 @@ export function Inspector() {
                 {retrievalMemories.slice(0, 6).map((memory) => (
                   <li key={memory.id}>
                     <div>
-                      <strong>{memory.summary}</strong>
+                      <strong>{plain(memory.summary)}</strong>
                       <small>
                         {memory.kind.replace(/_/g, " ")}
                         {memory.score !== undefined ? ` · ${Math.round(memory.score * 100)}% match` : ""}

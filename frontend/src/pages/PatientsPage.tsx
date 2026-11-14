@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth";
 import { useApp } from "../state";
 import type { PatientSummary } from "../types";
-import { ErrorBanner, Spinner } from "../ui";
+import { ErrorBanner, Spinner, cx } from "../ui";
 import "./patients.css";
 
 type Filter = "all" | "mine" | "needs" | "overdue";
@@ -59,6 +59,9 @@ export function PatientsPage() {
       });
   }, [dashboard, filter, query, user]);
 
+  const showCoordinator = (dashboard?.patients ?? []).some((p) => p.coordinator);
+  const count = needsYou;
+
   if (!dashboard) {
     return loading ? <Spinner /> : <ErrorBanner message={error || "No patient data."} onRetry={refresh} />;
   }
@@ -99,41 +102,69 @@ export function PatientsPage() {
       {rows.length === 0 ? (
         <p className="pt-empty">No patients match.</p>
       ) : (
-        <div className="pt-table" role="table" aria-label="Patients">
+        <div className={cx("pt-table pl-table", showCoordinator && "pl-with-coord")} role="table" aria-label="Patients">
           <div className="pt-row pt-row-head" role="row">
             <span role="columnheader">Patient</span>
-            <span role="columnheader">Condition</span>
             <span role="columnheader">Since discharge</span>
             <span role="columnheader">Next deadline</span>
             <span role="columnheader">Needs you</span>
-            <span role="columnheader">Coordinator</span>
+            {showCoordinator ? <span role="columnheader">Coordinator</span> : null}
           </div>
           {rows.map((p) => {
-            const count = needsYou(p);
             const overdue = p.overdue_count > 0;
+            const day = p.days_since_discharge;
+            const decide = p.conflict_count + p.pending_verification;
+            const mrn = p.mrn && /^[A-Z]{1,3}-?\d{3,}$/.test(p.mrn) ? p.mrn : null;
             return (
               <div
                 key={p.id}
-                className="pt-row"
+                className={cx("pt-row", overdue && "pl-overdue")}
                 role="row"
                 tabIndex={0}
                 onClick={() => navigate(`/patients/${p.id}`)}
                 onKeyDown={(e) => e.key === "Enter" && navigate(`/patients/${p.id}`)}
               >
-                <span role="cell" className="pt-name">
-                  <i className={overdue ? "pt-dot is-red" : "pt-dot"} aria-hidden />
-                  <b>{p.name}</b>
-                  <code title={p.mrn}>{p.mrn && p.mrn.length > 12 ? `${p.mrn.slice(0, 8)}…` : p.mrn}</code>
+                <span role="cell" className="pl-who">
+                  <i className={cx("dot", overdue ? "dot-red" : count(p) ? "dot-amber" : "dot-neutral")} aria-hidden />
+                  <span>
+                    <b>{p.name}</b>
+                    <small>
+                      {p.condition}
+                      {mrn ? <span className="pl-mrn">{mrn}</span> : null}
+                    </small>
+                  </span>
                 </span>
-                <span role="cell">{p.condition}</span>
-                <span role="cell"><code>{p.days_since_discharge != null ? `day ${p.days_since_discharge}` : "—"}</code></span>
-                <span role="cell" className={p.next_deadline?.overdue ? "pt-red" : ""}>
-                  {p.next_deadline ? `${p.next_deadline.description} · due ${shortDate(p.next_deadline.due_date)}` : "—"}
+                <span role="cell" className="pl-day">
+                  {day != null ? (
+                    <>
+                      <span>Day {Math.max(0, day)} of 30</span>
+                      <i className="pl-track" aria-hidden>
+                        <i style={{ width: `${Math.min(100, (Math.max(0, day) / 30) * 100)}%` }} />
+                      </i>
+                    </>
+                  ) : (
+                    <span className="pt-muted">No stay</span>
+                  )}
                 </span>
-                <span role="cell" className={overdue ? "pt-red pt-strong" : ""}>
-                  {count === 0 ? "—" : overdue ? `${count} · ${p.overdue_count} overdue` : count}
+                <span role="cell" className="pl-next">
+                  {p.next_deadline ? (
+                    <>
+                      <span>{p.next_deadline.description}</span>
+                      <small className={p.next_deadline.overdue ? "tone-red" : ""}>
+                        {p.next_deadline.overdue ? "Was due" : "Due"} {shortDate(p.next_deadline.due_date)}
+                      </small>
+                    </>
+                  ) : (
+                    <span className="pt-muted">Nothing open</span>
+                  )}
                 </span>
-                <span role="cell" className="pt-muted">{p.coordinator || "Unassigned"}</span>
+                <span role="cell" className="pl-needs">
+                  {overdue ? <span className="tag-tone tone-red">{p.overdue_count} overdue</span> : null}
+                  {decide ? <span className="tag-tone tone-amber">{decide} to check</span> : null}
+                  {p.escalation_count ? <span className="tag-tone tone-red">{p.escalation_count} escalated</span> : null}
+                  {!overdue && !decide && !p.escalation_count ? <span className="pt-muted">Nothing</span> : null}
+                </span>
+                {showCoordinator ? <span role="cell" className="pt-muted">{p.coordinator || "Unassigned"}</span> : null}
               </div>
             );
           })}

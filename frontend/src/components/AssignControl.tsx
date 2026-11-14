@@ -51,8 +51,8 @@ export function AssignControl({ obligation, onChanged }: { obligation: Obligatio
     );
   }
   return (
-    <button type="button" className="link-button assign-button" onClick={() => setEditing(true)} title="Who on the team is chasing this">
-      {obligation.assignee ? `Assigned · ${obligation.assignee.name}` : "Assign"}
+    <button type="button" className="ob-more assign-button" onClick={() => setEditing(true)} title="Who on the team is chasing this">
+      {obligation.assignee ? `Reassign` : "Assign to someone"}
     </button>
   );
 }
