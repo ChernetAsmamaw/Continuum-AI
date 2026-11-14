@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     # LLM_MODEL empty = a sensible default for the provider (see agent/llm.py).
     llm_provider: str = "openai"
     llm_model: str = ""
+    # Model for the console assistant (tool calling). Empty: a capable default for the provider.
+    assistant_model: str = ""
     llm_api_key: str | None = None
     llm_base_url: str | None = None
     embedding_model: str = "text-embedding-3-small"

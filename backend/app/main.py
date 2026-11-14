@@ -162,6 +162,9 @@ from .routes import portal as portal_routes  # noqa: E402
 app.include_router(review_router, prefix=API_PREFIX, dependencies=[Depends(require_auth)])
 app.include_router(tcm_routes.router, prefix=API_PREFIX, dependencies=[Depends(require_auth)])
 app.include_router(work_routes.router, prefix=API_PREFIX, dependencies=[Depends(require_auth)])
+from .routes import assistant as assistant_routes  # noqa: E402
+
+app.include_router(assistant_routes.router, prefix=API_PREFIX)
 app.include_router(portal_routes.router, prefix=API_PREFIX)  # public: patient link + Twilio signature
 
 
