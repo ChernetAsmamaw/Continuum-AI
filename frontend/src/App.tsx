@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
 import { AppProvider } from "./state";
+import { CallProvider } from "./call";
 import { RequireAuth } from "./components/RequireAuth";
 import { Layout } from "./components/Layout";
 import { ActionsPage } from "./pages/ActionsPage";
@@ -39,7 +40,7 @@ export default function App() {
           <Route path="/demo" element={<DemoEntry />} />
           <Route path="/checkin/:token" element={<CheckinPage />} />
           <Route element={<RequireAuth />}>
-            <Route element={<AppProvider><Layout /></AppProvider>}>
+            <Route element={<AppProvider><CallProvider><Layout /></CallProvider></AppProvider>}>
               <Route path="/console" element={<QueuePage />} />
               <Route path="/overview" element={<Dashboard />} />
               <Route path="/work" element={<WorkPage />} />

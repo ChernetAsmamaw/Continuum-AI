@@ -3,20 +3,20 @@ import { createPortal } from "react-dom";
 import { Icon, type IconName } from "./Icon";
 
 const TOUR_ITEMS: { icon: IconName; title: string; body: string }[] = [
-  { icon: "overview", title: "Overview", body: "Your caseload at a glance — open loops, overdue and awaiting verification, plus the demo day runner." },
-  { icon: "users", title: "Patient journey", body: "Each patient's timeline, obligations and evidence trail in one place." },
-  { icon: "check", title: "Approvals", body: "Sensitive changes pause here for your decision. Approve or reject with Y / X." },
-  { icon: "document", title: "Audit log", body: "Append-only trail of every change. Nothing in Continuum is ever overwritten." },
+  { icon: "check", title: "Needs you", body: "One list of what needs a person, overdue first. Open an item, read why, take the main action." },
+  { icon: "users", title: "Patients", body: "Each patient's follow-ups, evidence and timeline in one place." },
+  { icon: "overview", title: "Add a discharge", body: "Import from the hospital record or enter one by hand." },
+  { icon: "document", title: "Activity", body: "Calls, imports, past decisions and the audit log. A place to check, not to work." },
 ];
 
 const TOUR_KEYS: { label: string; keys: string[] }[] = [
-  { label: "Overview", keys: ["g", "d"] },
+  { label: "Needs you", keys: ["g", "d"] },
   { label: "Patients", keys: ["g", "p"] },
-  { label: "Approvals", keys: ["g", "a"] },
-  { label: "Audit log", keys: ["g", "l"] },
+  { label: "Next / previous item", keys: ["j", "k"] },
+  { label: "Main action", keys: ["↵"] },
   { label: "Search", keys: ["/"] },
   { label: "Ask Continuum", keys: ["a"] },
-  { label: "Command palette", keys: ["k"] },
+  { label: "Audit log", keys: ["g", "l"] },
   { label: "All shortcuts", keys: ["?"] },
 ];
 
@@ -47,9 +47,9 @@ export function WelcomeTour({
           <span className="eyebrow-dot" />
           Welcome to Continuum
         </p>
-        <h2>Your post-discharge caseload, in one calm place.</h2>
+        <h2>Everything that needs you, in one list.</h2>
         <p>
-          Every follow-up stays an open loop until evidence closes it. Here is where things live:
+          Every follow-up stays open until evidence closes it. Here is where things live:
         </p>
         <div className="tour-grid">
           {TOUR_ITEMS.map((item) => (

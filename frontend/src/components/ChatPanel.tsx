@@ -4,6 +4,7 @@ import { api } from "../api";
 import type { AgentResult, Approval, ThreadState } from "../types";
 import { cx, formatDateTime, pct } from "../ui";
 import { ApprovalCard } from "./ApprovalCard";
+import { Markdown } from "./Markdown";
 
 interface ChatMessage {
   id: string;
@@ -199,7 +200,7 @@ export function ChatPanel({
                 <strong>{message.role === "user" ? "You" : message.role === "agent" ? "Continuum" : "System"}</strong>
                 <small>{formatDateTime(message.at)}</small>
               </div>
-              <p>{message.text}</p>
+              {message.role === "agent" ? <Markdown text={message.text} /> : <p>{message.text}</p>}
               {message.result?.retrieval?.counts ? (
                 <div className="chat-trace">
                   <span>{message.result.retrieval.counts.memories ?? 0} memories recalled</span>
@@ -227,12 +228,24 @@ export function ChatPanel({
       </div>
 
       {pendingApprovals.length > 0 ? (
-        <div className="chat-approvals">
-          <h4>Pending approvals</h4>
+        <details className="chat-approvals" open={paused || undefined}>
+          <summary>
+            <span>
+              Pending approvals <b>{pendingApprovals.length}</b>
+            </span>
+          </summary>
           {pendingApprovals.map((approval) => (
-            <ApprovalCard key={approval.id} approval={approval} compact onResolved={loadThread} />
+            <details className="chat-approval" key={approval.id} open={(paused && pendingApprovals.length === 1) || undefined}>
+              <summary>
+                <span className="chat-approval-title">{approval.title}</span>
+                <small>
+                  {approval.kind.replace(/_/g, " ")} · {formatDateTime(approval.created_at)}
+                </small>
+              </summary>
+              <ApprovalCard approval={approval} compact onResolved={loadThread} />
+            </details>
           ))}
-        </div>
+        </details>
       ) : null}
 
       {lastResult?.proposals && lastResult.proposals.length > 0 ? (

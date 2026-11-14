@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
+import { useCall } from "../call";
 import { useApp } from "../state";
 import { cx, initials } from "../ui";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
@@ -146,6 +147,7 @@ function sectionLabel(pathname: string): string {
 export function Layout() {
   const { config, dashboard, error, toast, loading, ops } = useApp();
   const { user, logout } = useAuth();
+  const call = useCall();
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -424,6 +426,27 @@ export function Layout() {
             </Link>
           </div>
         </header>
+
+        {call.active && location.pathname !== `/patients/${call.active.patient_id}/call` ? (
+          <div className="call-bar" role="status">
+            <span className="call-bar-dot" aria-hidden />
+            <span>
+              On a call with <strong>{call.patientName || "a patient"}</strong>
+              {call.active.brief?.phone ? (
+                <>
+                  {" · "}
+                  <code>{call.active.brief.phone}</code>
+                </>
+              ) : null}
+            </span>
+            <Link className="btn btn-small" to={`/patients/${call.active.patient_id}/call`}>
+              Back to the call
+            </Link>
+            <button className="btn btn-small btn-ghost" onClick={() => void call.end()}>
+              End call
+            </button>
+          </div>
+        ) : null}
 
         <main className={cx("page", location.pathname === "/console" && "page-flush")} key={location.pathname}>
           {error ? (

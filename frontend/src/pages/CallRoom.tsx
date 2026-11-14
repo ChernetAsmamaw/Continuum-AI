@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { api } from "../api";
+import { useCall } from "../call";
 import { useApp } from "../state";
 import type { CallBrief, CallEffect, CallEvent, CallMode, CallModes, CallSession, LedgerAction } from "../types";
-import { Card, ErrorBanner, Spinner, cx, statusLabel } from "../ui";
+import { Card, ErrorBanner, Spinner, cx, formatDate, statusLabel } from "../ui";
 
 const MODE_COPY: Record<CallMode, { title: string; detail: string }> = {
   simulated: { title: "Simulated", detail: "A scripted call built from this patient's open follow-ups. Uses the real tools. No keys needed." },
@@ -59,7 +59,8 @@ function elapsed(from?: string, to?: string): string {
 
 function CallRoomInner() {
   const { patientId = "" } = useParams();
-  const { refreshKey, notify } = useApp();
+  const { refreshKey, notify, dashboard } = useApp();
+  const call = useCall();
   const [modes, setModes] = useState<CallModes | null>(null);
   const [brief, setBrief] = useState<CallBrief | null>(null);
   const [session, setSession] = useState<CallSession | null>(null);
@@ -69,25 +70,7 @@ function CallRoomInner() {
   const [error, setError] = useState<string | null>(null);
   const [ledger, setLedger] = useState<LedgerAction | null>(null);
   const [, tick] = useState(0);
-  const sessionRef = useRef<CallSession | null>(null);
-  sessionRef.current = session;
   const transcriptEnd = useRef<HTMLDivElement | null>(null);
-
-  const conversation = useConversation({
-    onMessage: (event: unknown) => {
-      const s = sessionRef.current;
-      if (!s) return;
-      const data = event as Record<string, unknown>;
-      const type = String(data.type ?? "");
-      if (type === "user_transcript") void api.calls.line(s.id, "patient", String(data.user_transcript ?? ""));
-      else if (type === "agent_response") void api.calls.line(s.id, "agent", String(data.agent_response ?? ""));
-    },
-    onError: (message: string) => setError(message || "The voice session failed."),
-    onDisconnect: () => {
-      const s = sessionRef.current;
-      if (s && s.mode === "browser" && LIVE.has(s.status)) void api.calls.end(s.id).then((r) => setSession(r.session));
-    },
-  });
 
   const loadSession = useCallback(async (id: string) => {
     const { session: s } = await api.calls.get(id);
@@ -143,15 +126,11 @@ function CallRoomInner() {
     try {
       const { session: s } = await api.calls.start(patientId, mode, mode === "phone" ? phone : undefined);
       setSession(s);
+      call.track(s, brief?.patient_name);
       if (mode === "browser") {
         const agentId = modes?.agent_id;
         if (!agentId) throw new Error("No ElevenLabs agent configured.");
-        const conversationId = await conversation.startSession({
-          agentId,
-          dynamicVariables: { patient_id: patientId, patient_name: brief?.patient_name || "", call_session_id: s.id },
-        });
-        const connectedSession = await api.calls.connected(s.id, typeof conversationId === "string" ? conversationId : null);
-        setSession(connectedSession.session);
+        setSession(await call.connectBrowser(s, agentId, brief?.patient_name || ""));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "The call could not start");
@@ -164,15 +143,30 @@ function CallRoomInner() {
     if (!session) return;
     setBusy(true);
     try {
-      if (session.mode === "browser" && conversation.status === "connected") await conversation.endSession();
-      const { session: s } = await api.calls.end(session.id);
-      setSession(s);
+      const ended = call.active?.id === session.id ? await call.end() : (await api.calls.end(session.id)).session;
+      if (ended) setSession(ended);
       notify("Call ended. What it changed is listed on the right.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not end the call");
     } finally {
       setBusy(false);
     }
+  };
+
+  // Coming back to a call that is still running (started here or elsewhere).
+  useEffect(() => {
+    if (session && LIVE.has(session.status) && call.active?.id !== session.id && session.mode !== "browser") {
+      call.track(session, brief?.patient_name);
+    }
+  }, [session?.id, session?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const patient = dashboard?.patients.find((p) => p.id === patientId);
+  const phoneOnFile = brief?.phone || patient?.phone;
+  const copy = (value: string, label: string) => {
+    void navigator.clipboard?.writeText(value).then(
+      () => notify(`${label} copied.`),
+      () => undefined,
+    );
   };
 
   const events = session?.events || [];
@@ -192,10 +186,8 @@ function CallRoomInner() {
     <div className="call-room">
       <div className="call-head">
         <div>
-          <p className="eyebrow">
-            <Link to={`/patients/${patientId}`}>{brief.patient_name}</Link> · Call room
-          </p>
-          <h1>{live ? "On the call" : session ? "Last call" : "Start a check-in call"}</h1>
+          <p className="eyebrow">{live ? "On the call with" : session ? "Last call with" : "Check-in call with"}</p>
+          <h1>{brief.patient_name || "Patient"}</h1>
           <p className="muted">
             {brief.language} · best time {brief.best_time || "any"} ·{" "}
             {brief.consent_to_recording ? "consented to recording" : "no recording"}
@@ -219,7 +211,65 @@ function CallRoomInner() {
         ) : null}
       </div>
 
-      {error ? <ErrorBanner message={error} /> : null}
+      <dl className="call-patient" aria-label="Patient details">
+        <div>
+          <dt>Phone</dt>
+          <dd>
+            {phoneOnFile ? (
+              <>
+                <code>{phoneOnFile}</code>
+                <button className="link-button" onClick={() => copy(phoneOnFile, "Number")}>
+                  Copy
+                </button>
+              </>
+            ) : (
+              "Not on file"
+            )}
+          </dd>
+        </div>
+        {patient?.birth_date ? (
+          <div>
+            <dt>Date of birth</dt>
+            <dd>
+              <code>{formatDate(patient.birth_date, { year: "numeric", month: "short", day: "numeric" })}</code> · {patient.age}
+            </dd>
+          </div>
+        ) : null}
+        {patient ? (
+          <div>
+            <dt>MRN</dt>
+            <dd>
+              <code>{patient.mrn}</code>
+            </dd>
+          </div>
+        ) : null}
+        {patient?.condition ? (
+          <div>
+            <dt>Condition</dt>
+            <dd>{patient.condition}</dd>
+          </div>
+        ) : null}
+        {patient?.caregiver ? (
+          <div>
+            <dt>Caregiver</dt>
+            <dd>
+              {patient.caregiver}
+              {patient.caregiver_contact?.phone ? (
+                <>
+                  {" · "}
+                  <code>{patient.caregiver_contact.phone}</code>
+                </>
+              ) : null}
+            </dd>
+          </div>
+        ) : null}
+        <div className="call-patient-link">
+          <Link to={`/patients/${patientId}`}>Open patient page</Link>
+          {live ? <small>The call keeps running.</small> : null}
+        </div>
+      </dl>
+
+      {error || call.error ? <ErrorBanner message={error || call.error || ""} /> : null}
 
       {!live ? (
         <Card title={session ? "Start another call" : "How should this call happen?"}>
@@ -317,9 +367,9 @@ function CallRoomInner() {
           )}
           {live && session?.mode === "browser" ? (
             <p className="muted call-hint">
-              {conversation.isSpeaking ? "Agent speaking…" : "Listening. Speak as the patient."}{" "}
-              <button className="btn btn-small" onClick={() => conversation.setMuted(!conversation.isMuted)}>
-                {conversation.isMuted ? "Unmute" : "Mute"}
+              {call.isSpeaking ? "Agent speaking…" : "Listening. Speak as the patient."}{" "}
+              <button className="btn btn-small" onClick={() => call.setMuted(!call.isMuted)}>
+                {call.isMuted ? "Unmute" : "Mute"}
               </button>
             </p>
           ) : null}
@@ -369,9 +419,5 @@ function CallRoomInner() {
 }
 
 export function CallRoom() {
-  return (
-    <ConversationProvider>
-      <CallRoomInner />
-    </ConversationProvider>
-  );
+  return <CallRoomInner />;
 }
