@@ -65,6 +65,17 @@ Two LangGraph agents work on the same Atlas data.
 | Resume after a crash without replaying history | **Checkpointed ingestion jobs** with leases. A killed job resumes at the next step on restart, and change streams resume from a saved token. |
 | Adapt when a system changes underneath it | **Order memory**: a referral under a new code or wording is matched by meaning, and a coordinator's correction is remembered. |
 
+### Statement Three's three questions
+
+**1. How does it tell an action that took effect from one that was only sent?**
+Every outbound action goes into an action ledger: `intended → sent → confirmed`. A call is *confirmed* only when its transcript arrives; one with no proof is flagged `unconfirmed`, never assumed done. A patient saying "it's done" stays *patient-reported* until a lab result or clinic note proves it.
+
+**2. How does it resume after a crash without replaying its whole history?**
+Each hospital import is a job saved to Atlas after every step (pull, identify, structured, narrative, verify). On restart, Continuum finds the unfinished job, sees which steps are saved, and continues from the next one. Agent runs resume from LangGraph checkpoints in Atlas.
+
+**3. How does it adapt when a system's layout, fields or workflow change?**
+When a hospital sends an order under a new code or wording, Continuum matches it to orders it has seen before by meaning, with Atlas Vector Search. When a coordinator corrects a match, that correction is remembered for next time.
+
 ### The three hard parts
 
 <p align="center"><img src="docs/diagrams/proof-before-done.svg" alt="Proof before done: follow-up states and the action ledger" width="100%"></p>
