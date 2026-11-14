@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -19,6 +20,32 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s :: %(message)s",
 )
 log = logging.getLogger("continuum")
+
+# Query-string credentials (the console's EventSource sends its JWT as
+# ``/api/stream?token=…``) must never reach a log file.
+_SECRET_QUERY = re.compile(r"(?i)([?&](?:token|access_token|ticket|key|secret)=)[^&\s\"]*")
+
+
+def redact_secrets(text: str) -> str:
+    return _SECRET_QUERY.sub(r"\1[REDACTED]", text)
+
+
+class RedactQuerySecrets(logging.Filter):
+    """Strip token-like query values from uvicorn access-log records."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple) and record.args:
+            record.args = tuple(redact_secrets(a) if isinstance(a, str) else a for a in record.args)
+        elif isinstance(record.msg, str):
+            record.msg = redact_secrets(record.msg)
+        return True
+
+
+_REDACTOR = RedactQuerySecrets()
+for _name in ("uvicorn.access", "uvicorn.error", "uvicorn"):
+    _logger = logging.getLogger(_name)
+    if not any(isinstance(f, RedactQuerySecrets) for f in _logger.filters):
+        _logger.addFilter(_REDACTOR)
 
 
 @asynccontextmanager

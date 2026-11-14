@@ -77,7 +77,11 @@ def test_future_checkins_wait_and_unclear_ones_are_flagged(client, db):
     assert db.checkins.find_one({"id": unclear["id"]})["status"] == "needs_review"
     assert db.checkins.find_one({"id": loose["id"]})["status"] == "scheduled"
 
-    run_sweep(today=date.today() + timedelta(days=1), now=datetime.now(timezone.utc) + timedelta(days=1))
+    # "tomorrow afternoon" resolves to 14:00 local tomorrow; by 16:00 local it is due.
+    stored = db.checkins.find_one({"id": loose["id"]})
+    assert stored["scheduled_for_resolved"] is True and "T14:00:00" in stored["scheduled_for"]
+    due_at = datetime.fromisoformat(stored["scheduled_for"]).astimezone(timezone.utc) + timedelta(hours=2)
+    run_sweep(today=date.today() + timedelta(days=1), now=due_at)
     assert db.checkins.find_one({"id": loose["id"]})["status"] == "awaiting_manual_call"
 
 

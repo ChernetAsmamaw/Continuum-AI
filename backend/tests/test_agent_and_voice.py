@@ -240,3 +240,48 @@ def test_calls_are_processed_while_a_chat_is_paused(client, db):
     blood = next(o for o in client.get(f"/api/patients/{MICHAEL}/journey").json()["obligations"] if o["category"] == "bloodwork")
     assert blood["status"] == "patient_reported"
     assert client.get(f"/api/agent/threads/{MICHAEL}").json()["paused"] is True  # chat still waits for its approval
+
+
+_AGENT_DIRECTIVES = ("do not", "don't tell", "tell the patient", "the patient")
+
+
+def _patient_safe(text: str) -> bool:
+    return not any(d in text.lower() for d in _AGENT_DIRECTIVES)
+
+
+def test_spoken_responses_hold_no_agent_instructions(client, db):
+    booking = client.post("/api/voice/appointment", json={"patient_id": MICHAEL, "requested_time": "Friday morning"}).json()
+    follow = client.post("/api/voice/follow-up", json={"patient_id": MICHAEL, "item": "a copy of my discharge summary"}).json()
+    callback = client.post("/api/voice/checkin", json={"patient_id": MICHAEL, "when": "Friday afternoon",
+                                                       "reason": "Patient requested a callback on Friday afternoon"}).json()
+    for body in (booking, follow, callback):
+        assert _patient_safe(body["spoken_response"]), body["spoken_response"]
+        assert body["agent_instructions"]
+    assert "NOT booked" in booking["agent_instructions"]
+    assert "requested" not in callback["spoken_response"].lower()  # the reason is not echoed back
+    assert ".." not in callback["spoken_response"]
+
+
+def test_report_acknowledgement_is_a_fixed_template(client):
+    body = client.post("/api/voice/report", json={"patient_id": MICHAEL, "report": "I missed my cardiology visit."}).json()
+    assert body["spoken_response"] == "Thanks, I've noted that for your care team; the clinic will verify it."
+    assert body["reply"] == body["spoken_response"]
+
+
+def test_callback_time_is_resolved_and_spoken_back(client, db):
+    from app.db import demo_today
+
+    body = client.post("/api/voice/checkin", json={"patient_id": MICHAEL, "when": "Friday afternoon"}).json()
+    assert body["resolved"] is True and body["status"] == "scheduled"
+    assert "T14:00:00" in body["scheduled_for"]
+    assert body["spoken_response"].startswith("I've set up a call for Friday, ") and "at 2 PM" in body["spoken_response"]
+    stored = db.checkins.find_one({"id": body["checkin_id"]})
+    assert stored["scheduled_for_raw"] == "Friday afternoon"
+    assert stored["scheduled_for"][:10] > demo_today().isoformat()
+
+
+def test_unresolved_callback_time_is_not_claimed_as_set(client, db):
+    body = client.post("/api/voice/checkin", json={"patient_id": MICHAEL, "when": "whenever suits the nurse"}).json()
+    assert body["ok"] is True and body["resolved"] is False and body["scheduled_for"] is None
+    assert "confirm the time" in body["spoken_response"]
+    assert "set up a call for" not in body["spoken_response"]

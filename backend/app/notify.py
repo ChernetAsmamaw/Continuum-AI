@@ -98,7 +98,7 @@ def _ack_window(level: str) -> timedelta:
     return timedelta(minutes=minutes)
 
 
-def page_on_call(db: Database, approval: dict, *, attempt: int = 1) -> dict:
+def page_on_call(db: Database, approval: dict, attempt: int = 1) -> dict:
     """Page the on-call clinician about one escalation, by SMS and email."""
     level = urgency(approval) or "urgent"
     patient = repo.get_patient(db, approval["patient_id"]) or {}
@@ -138,7 +138,15 @@ def page_on_call(db: Database, approval: dict, *, attempt: int = 1) -> dict:
     else:
         ledger.mark_failed(db, action["id"], detail)
     pages = list(approval.get("pages") or []) + [{"at": utcnow(), "attempt": attempt, "ok": bool(sent), "detail": detail}]
-    db.approvals.update_one({"id": approval["id"]}, {"$set": {"pages": pages, "last_paged_at": utcnow(), "urgency": level}})
+    status = {"pages": pages, "last_paged_at": utcnow(), "urgency": level}
+    if sent:
+        status.update(page_status="sent", page_failed=False)
+    elif not any(p.get("ok") for p in pages):
+        status.update(page_status="failed", page_failed=True,
+                      page_note=f"Paging failed — the on-call clinician has NOT been notified. {detail}")
+    db.approvals.update_one({"id": approval["id"]}, {"$set": status})
+    if not sent and not any(p.get("ok") for p in pages):
+        _flag_failed_page(db, approval, level, detail)
     repo.audit(
         db,
         patient_id=approval["patient_id"],
@@ -150,14 +158,49 @@ def page_on_call(db: Database, approval: dict, *, attempt: int = 1) -> dict:
     return {"ok": bool(sent), "detail": detail, "attempt": attempt}
 
 
+def _flag_failed_page(db: Database, approval: dict, level: str, detail: str) -> None:
+    """Put a failed page in front of the coordinators, who can phone the on-call clinician.
+
+    Escalations sit in the clinician queue; a page that never went out means no
+    clinician knows to look there, so the coordinator queue gets a task too
+    (one per escalation: it dedupes on the escalation id).
+    """
+    patient = repo.get_patient(db, approval["patient_id"]) or {}
+    name = patient.get("name") or "patient"
+    try:
+        repo.create_approval(
+            db,
+            {
+                "patient_id": approval["patient_id"],
+                "run_id": approval.get("run_id"),
+                "thread_id": approval.get("thread_id") or approval["patient_id"],
+                "kind": "follow_up",
+                "mode": "queued",
+                "obligation_id": f"page_failed:{approval['id']}",
+                "title": f"Page failed: contact the on-call clinician about {name} ({level})",
+                "rationale": (
+                    f"An {level} escalation could not be paged to the on-call clinician ({detail}). "
+                    "Reach the clinician directly and point them to the escalation in the clinician queue."
+                ),
+                "proposed_changes": {"escalation_id": approval["id"], "urgency": level, "page_detail": detail},
+                "evidence_summary": approval.get("rationale") or approval.get("title") or "Escalation",
+                "confidence": 1.0,
+                "source": "paging",
+            },
+        )
+    except Exception:  # flagging must never break the page bookkeeping
+        log.exception("Could not flag failed page for %s", approval["id"])
+
+
 def page_in_background(db: Database, approval: dict) -> None:
     """Page now without holding up the request that queued the escalation."""
     if not urgency(approval):
         return
+    attempt = len(approval.get("pages") or []) + 1  # >1 when an open escalation's urgency rises
     if not (sms_configured() or email_configured()):
-        page_on_call(db, approval)  # nothing to wait on: record the outcome inline
+        page_on_call(db, approval, attempt=attempt)  # nothing to wait on: record the outcome inline
         return
-    threading.Thread(target=page_on_call, args=(db, approval), daemon=True).start()
+    threading.Thread(target=page_on_call, args=(db, approval, attempt), daemon=True).start()
 
 
 def acknowledge(db: Database, approval_id: str, *, actor: str) -> dict | None:

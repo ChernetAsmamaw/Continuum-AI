@@ -110,3 +110,52 @@ def test_bulk_resolve_respects_queues(client):
     _sign_in(client, "clinician")
     done = client.post("/api/agent/approvals/bulk-resolve", json={"ids": [a, b], "approve": True, "note": "Called both"}).json()
     assert done["resolved"] == 2
+
+
+def test_failed_page_is_not_reported_as_paged(client, db):
+    result = _emergency()  # no ON_CALL_PHONE / ON_CALL_EMAIL in tests
+    assert result["ok"] is True and result["paged"] is False and result["page_status"] == "failed"
+    assert "911" in result["spoken_response"]
+    assert "clinician" not in result["spoken_response"].lower()  # true whether or not a page went out
+    assert "NOT be paged" in result["agent_instructions"]
+    approval = db.approvals.find_one({"id": result["escalation_id"]})
+    assert approval["page_failed"] is True and "Paging failed" in approval["page_note"]
+    # Coordinators get a task to reach the on-call clinician, once per escalation.
+    tasks = list(db.approvals.find({"obligation_id": f"page_failed:{approval['id']}", "status": "pending"}))
+    assert len(tasks) == 1 and tasks[0]["audience"] == "coordinator" and tasks[0]["source"] == "paging"
+
+
+def test_successful_page_reports_paged(client, db, paging):
+    result = _emergency()
+    assert result["paged"] is True and result["page_status"] == "sent"
+    assert db.approvals.find_one({"id": result["escalation_id"]})["page_failed"] is False
+
+
+def test_routine_escalation_is_not_paged_and_says_so(client, paging):
+    result = voice_escalate(patient_id="pat_michael", reason="Question about a dose", urgency="routine")
+    assert result["paged"] is False and result["page_status"] == "not_required"
+    assert result["spoken_response"] == "I've flagged this for your care team to review and follow up with you."
+
+
+def test_second_escalation_keeps_its_reason_and_the_highest_urgency(client, db, paging):
+    first = _emergency()
+    second = voice_escalate(patient_id="pat_michael", reason="Also asks about refilling metoprolol", urgency="routine")
+    assert second["escalation_id"] == first["escalation_id"]  # one card per patient
+    approval = db.approvals.find_one({"id": first["escalation_id"]})
+    assert "Chest pain" in approval["rationale"] and "metoprolol" in approval["rationale"]
+    assert approval["proposed_changes"]["urgency"] == "emergency" and second["urgency"] == "emergency"
+    assert [r["urgency"] for r in approval["reasons"]] == ["emergency", "routine"]
+    assert len(approval["pages"]) == 1  # a routine addition does not re-page
+    # A retried identical call adds nothing.
+    voice_escalate(patient_id="pat_michael", reason="Also asks about refilling metoprolol", urgency="routine")
+    assert len(db.approvals.find_one({"id": first["escalation_id"]})["reasons"]) == 2
+
+
+def test_routine_escalation_raised_to_urgent_pages(client, db, paging):
+    first = voice_escalate(patient_id="pat_michael", reason="Question about a dose", urgency="routine")
+    assert paging == []
+    second = voice_escalate(patient_id="pat_michael", reason="Now short of breath", urgency="urgent")
+    approval = db.approvals.find_one({"id": first["escalation_id"]})
+    assert second["escalation_id"] == first["escalation_id"]
+    assert approval["proposed_changes"]["urgency"] == "urgent" and approval["title"] == "Clinical escalation (urgent)"
+    assert approval["pages"][0]["ok"] is True and second["paged"] is True

@@ -355,6 +355,9 @@ def seed_michael(db: Database, today: date | None = None) -> dict:
         {"patient_id": MICHAEL_ID, "category": "cardiology"},
         {
             "$set": {
+                # A confirmed booking moves the obligation's due date to the
+                # appointment, as the engine does when it schedules one.
+                "due_date": confirmed,
                 "confirmed_date": confirmed,
                 "confirmed_source": "clinic record CS-8841",
             }

@@ -408,7 +408,7 @@ def voice_report(
                 {
                     "$set": {
                         "outcome": "completed" if result.get("status") == "completed" else "awaiting_approval",
-                        "agent_message": result.get("spoken_response"),
+                        "agent_message": REPORT_ACK,
                     }
                 },
             )
@@ -422,7 +422,21 @@ def voice_report(
         thread_id=patient_id,
         run_id=result.get("run_id"),
     )
-    return result
+    return {
+        **result,
+        # The graph's reply is written for the console, not the patient: it can
+        # list open obligations or promise actions nobody has taken. The voice
+        # agent only gets a fixed, patient-safe acknowledgement.
+        "reply": REPORT_ACK,
+        "spoken_response": REPORT_ACK,
+        "agent_instructions": (
+            "Read spoken_response as is. The report is recorded as unverified patient evidence; "
+            "do not tell the patient anything is updated, closed, rescheduled or confirmed."
+        ),
+    }
+
+
+REPORT_ACK = "Thanks, I've noted that for your care team; the clinic will verify it."
 
 
 def voice_escalate(
@@ -488,18 +502,55 @@ def voice_escalate(
         thread_id=patient_id,
         run_id=approval["run_id"],
     )
+    urgent = urgency in {"urgent", "emergency"}
+    page_status = _page_status(approval)
+    paged = page_status in {"sent", "sending"}
+    if urgency == "emergency":
+        spoken = "I've flagged this for your care team. If this is an emergency, please hang up and call 911 now."
+    elif urgent:
+        spoken = "I've flagged this for your care team right away. If this is an emergency, please call 911."
+    else:
+        spoken = "I've flagged this for your care team to review and follow up with you."
+    if urgent and not paged:
+        instructions = (
+            "The on-call clinician could NOT be paged automatically; the escalation is queued for the care team. "
+            "Do not tell the patient a clinician has been paged or will call shortly. "
+            "If symptoms sound serious, tell them to call 911."
+        )
+    elif urgent:
+        instructions = "The on-call clinician is being paged. Do not promise a call-back time."
+    else:
+        instructions = "Queued for clinician review. Do not promise a call-back time or give clinical advice."
     return {
         "ok": True,
         "escalation_id": approval["id"],
-        "urgency": urgency,
+        "urgency": approval_urgency(approval) or urgency,
         "event_id": event["id"],
-        "spoken_response": (
-            "I've flagged this for a clinician right away. If this is an emergency, please call 911."
-            if urgency in {"urgent", "emergency"}
-            else "I've flagged this for a clinician to review and follow up with you."
-        ),
-        "transfer_recommended": urgency in {"urgent", "emergency"},
+        "paged": paged,
+        "page_status": page_status,
+        "spoken_response": spoken,
+        "agent_instructions": instructions,
+        "transfer_recommended": urgent,
     }
+
+
+def approval_urgency(approval: dict) -> str | None:
+    return (approval.get("proposed_changes") or {}).get("urgency")
+
+
+def _page_status(approval: dict) -> str:
+    """sent | sending | failed | not_required for an escalation's on-call page."""
+    from .notify import email_configured, sms_configured, urgency as page_urgency
+
+    if not page_urgency(approval):
+        return "not_required"
+    pages = approval.get("pages") or []
+    if any(p.get("ok") for p in pages):
+        return "sent"
+    if pages:
+        return "failed"
+    # Paging runs on a background thread when a channel is configured.
+    return "sending" if (sms_configured() or email_configured()) else "failed"
 
 
 # ── Voice agent actions (the agent's "hands") ────────────────────────────
@@ -507,8 +558,9 @@ def voice_escalate(
 # Design rule: a patient asking for an action on a voice call is a *request*,
 # never a confirmation. The agent may commit the patient to nothing — it
 # records the request, and the coordinator (or an immediate, patient-consented
-# check-in) executes it. The spoken_response strings below tell the agent what
-# it may say on the call.
+# check-in) executes it. ``spoken_response`` is only ever text that is safe to
+# read to the patient verbatim; guidance for the agent goes in
+# ``agent_instructions``.
 
 
 def voice_request_appointment(
@@ -602,9 +654,12 @@ def voice_request_appointment(
         "obligation_id": obligation["id"] if obligation else None,
         "status": "pending_confirmation",
         "spoken_response": (
-            f"I've sent your request to the clinic to book {label} for {when}. "
-            "They'll confirm the appointment and let you know the final time. "
-            "Do not tell the patient the appointment is booked — it is pending clinic confirmation."
+            f"I've sent your request to the clinic for {when}. "
+            "They'll confirm the appointment and let you know the final time."
+        ),
+        "agent_instructions": (
+            "The appointment is NOT booked; it is pending clinic confirmation. "
+            "Do not tell the patient it is booked or confirmed."
         ),
     }
 
@@ -677,10 +732,8 @@ def voice_request_follow_up(
         "ok": True,
         "approval_id": approval["id"],
         "status": "pending_confirmation",
-        "spoken_response": (
-            f"I've asked the care team to send you {item}. "
-            "Tell the patient it has been requested — do not say it has already been sent."
-        ),
+        "spoken_response": f"I've asked the care team to send you {item}.",
+        "agent_instructions": "It has been requested, not sent. Do not say it has already been sent.",
     }
 
 
@@ -707,9 +760,10 @@ def voice_request_callback(
             "ok": False,
             "detail": "Patient has not consented to automated calls",
             "spoken_response": (
-                "I'm not able to schedule an automated call for you. "
-                "Tell the patient a member of the care team will reach out by their preferred method."
+                "I'm not able to schedule an automated call for you, "
+                "but a member of the care team will reach out by your preferred method."
             ),
+            "agent_instructions": "No call was scheduled. Do not promise a call at a specific time.",
         }
 
     checkin = repo.schedule_checkin(
@@ -742,16 +796,47 @@ def voice_request_callback(
         after={"checkin_id": checkin["id"]},
         thread_id=patient_id,
     )
+    resolved = bool(checkin.get("scheduled_for_resolved"))
+    if resolved:
+        spoken = f"I've set up a call for {_spoken_time(checkin['scheduled_for'])}. The care team will call you then."
+        instructions = "The callback time is set. Do not promise anything else about the call."
+    else:
+        spoken = (
+            "I've passed your request for a call back to the care team. "
+            "They'll confirm the time with you."
+        )
+        instructions = (
+            "The requested time could not be understood, so it is NOT confirmed; the care team will confirm it. "
+            "Do not tell the patient a time is set."
+        )
     return {
         "ok": True,
         "checkin_id": checkin["id"],
-        "status": "scheduled",
-        "spoken_response": (
-            f"I've set a call for {when}"
-            + (f" about {reason}" if reason else "")
-            + ". Tell the patient the care team will call them then."
-        ),
+        "status": "scheduled" if resolved else "needs_time_confirmation",
+        "resolved": resolved,
+        "scheduled_for": checkin["scheduled_for"] if resolved else None,
+        "spoken_response": spoken,
+        "agent_instructions": instructions,
     }
+
+
+def _spoken_time(value: str) -> str:
+    """"2026-11-20T14:00:00-05:00" → "Friday, November 20 at 2 PM"; a date → "Friday, November 20"."""
+    from datetime import datetime as _dt
+
+    try:
+        parsed = _dt.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return value
+    day = f"{parsed:%A}, {parsed:%B} {parsed.day}"
+    if "T" not in value:
+        return day
+    from .util import _call_zone
+
+    local = parsed.astimezone(_call_zone()) if parsed.tzinfo else parsed
+    hour = local.hour % 12 or 12
+    minutes = f":{local.minute:02d}" if local.minute else ""
+    return f"{day} at {hour}{minutes} {'AM' if local.hour < 12 else 'PM'}"
 
 
 def _extract_post_call(payload: dict) -> tuple[dict, list[dict], str | None, str | None]:

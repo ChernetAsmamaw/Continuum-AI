@@ -126,12 +126,35 @@ def truncate(text: str, limit: int = 280) -> str:
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
+_WEEKDAYS = {
+    "monday": 0, "mon": 0, "tuesday": 1, "tue": 1, "tues": 1, "wednesday": 2, "wed": 2,
+    "thursday": 3, "thu": 3, "thur": 3, "thurs": 3, "friday": 4, "fri": 4,
+    "saturday": 5, "sat": 5, "sunday": 6, "sun": 6,
+}
+# Part of day → local clock hour for the callback.
+_PART_OF_DAY = {"morning": 9, "noon": 12, "midday": 12, "afternoon": 14, "evening": 18, "tonight": 18, "night": 18}
+
+
+def _call_zone():
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    from .config import settings
+
+    try:
+        return ZoneInfo(settings.call_timezone)
+    except (ZoneInfoNotFoundError, ValueError):
+        return timezone.utc
+
+
 def resolve_when(value: str | None, today: date) -> tuple[datetime | None, date | None]:
     """Interpret a check-in's ``scheduled_for``.
 
     Accepts ISO datetimes, ISO dates and loose phrases the voice agent may pass
-    through ("tomorrow afternoon", "Nov 20"). Returns ``(datetime, date)``;
-    both are ``None`` when the value cannot be understood.
+    through: "today", "tomorrow morning", "Friday afternoon", "next Monday",
+    "Nov 20", "11/20 evening". A weekday means its next occurrence after
+    ``today``; a part of day sets a local time in ``CALL_TIMEZONE`` (morning
+    9:00, afternoon 14:00, evening 18:00). Returns ``(datetime, date)``; both
+    are ``None`` when the value cannot be understood.
     """
     if not value:
         return None, None
@@ -145,13 +168,28 @@ def resolve_when(value: str | None, today: date) -> tuple[datetime | None, date 
         return None, dt.date()
     except ValueError:
         pass
-    parsed = parse_date(text)
-    if parsed:
-        return None, parsed
     lowered = text.lower()
-    if lowered.startswith(("now", "today", "asap", "as soon as", "this ")):
-        return None, today
-    if lowered.startswith("tomorrow"):
-        return None, parse_date(add_days(today, 1))
-    loose = extract_date(text, today)
-    return (None, parse_date(loose)) if loose else (None, None)
+    words = re.findall(r"[a-z]+", lowered)
+
+    day: date | None = None
+    if lowered.startswith(("now", "asap", "as soon as")) or "today" in words or "tonight" in words:
+        day = today
+    elif "tomorrow" in words:
+        day = today + timedelta(days=1)
+    else:
+        weekday = next((_WEEKDAYS[w] for w in words if w in _WEEKDAYS), None)
+        if weekday is not None:
+            ahead = (weekday - today.weekday()) % 7 or 7  # next occurrence after today
+            day = today + timedelta(days=ahead)
+        else:
+            day = parse_date(text) or parse_date(extract_date(text, today))
+            if day is None and lowered.startswith("this "):
+                day = today  # "this afternoon", "this week"
+
+    if day is None:
+        return None, None
+    hour = next((_PART_OF_DAY[w] for w in words if w in _PART_OF_DAY), None)
+    if hour is None:
+        return None, day
+    dt = datetime(day.year, day.month, day.day, hour, 0, tzinfo=_call_zone())
+    return dt, day

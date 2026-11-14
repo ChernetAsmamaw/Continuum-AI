@@ -779,6 +779,8 @@ def create_approval(db: Database, doc: dict) -> dict:
                 },
             )
             return get_approval(db, existing["id"]) or existing
+        if doc["kind"] == ApprovalKind.escalate.value:
+            return _merge_escalation(db, existing, doc)
         return existing
 
     approval = {
@@ -813,6 +815,65 @@ def create_approval(db: Database, doc: dict) -> dict:
             log.exception("Paging failed for %s", approval["id"])
         approval = get_approval(db, approval["id"]) or approval
     return approval
+
+
+_URGENCY_RANK = {"routine": 0, "urgent": 1, "emergency": 2}
+
+
+def _merge_escalation(db: Database, existing: dict, doc: dict) -> dict:
+    """Fold a further escalation into the open one without losing its reason.
+
+    One card per patient keeps the clinician queue (and its paging) coherent,
+    but every reason is kept, and the card takes the highest urgency raised.
+    A rise to urgent/emergency pages the on-call clinician.
+    """
+    new_reason = (doc.get("rationale") or "").strip()
+    old_changes = dict(existing.get("proposed_changes") or {})
+    new_changes = doc.get("proposed_changes") or {}
+    reasons = list(existing.get("reasons") or [
+        {"reason": existing.get("rationale"), "urgency": old_changes.get("urgency", "routine"), "at": existing.get("created_at")}
+    ])
+    if not new_reason or any((r.get("reason") or "").strip() == new_reason for r in reasons):
+        return existing  # the same escalation sent twice (a retried tool call)
+    old_level = old_changes.get("urgency", "routine")
+    new_level = new_changes.get("urgency", "routine")
+    level = new_level if _URGENCY_RANK.get(new_level, 0) > _URGENCY_RANK.get(old_level, 0) else old_level
+    reasons.append({"reason": new_reason, "urgency": new_level, "at": utcnow()})
+    combined = "\n".join(f"[{r.get('urgency', 'routine')}] {r.get('reason')}" for r in reasons)
+    changes = {**old_changes, "urgency": level, "note": combined}
+    update = {
+        "reasons": reasons,
+        "rationale": combined,
+        "evidence_summary": combined,
+        "proposed_changes": changes,
+        "title": f"Clinical escalation ({level})" if (existing.get("title") or "").startswith("Clinical escalation") else existing.get("title"),
+    }
+    proposal = existing.get("proposal")
+    if proposal:
+        update["proposal"] = {**proposal, "rationale": combined, "evidence_summary": combined,
+                              "changes": {**(proposal.get("changes") or {}), "urgency": level, "note": combined},
+                              "title": update["title"]}
+    db.approvals.update_one({"id": existing["id"]}, {"$set": update})
+    audit(
+        db,
+        patient_id=existing["patient_id"],
+        actor="Continuum",
+        action="Added reason to open escalation",
+        detail=truncate(new_reason, 300),
+        after={"approval_id": existing["id"], "urgency": level},
+        thread_id=existing.get("thread_id"),
+        run_id=doc.get("run_id"),
+    )
+    merged = get_approval(db, existing["id"]) or existing
+    if level != old_level and level in {"urgent", "emergency"}:
+        from .notify import page_in_background
+
+        try:
+            page_in_background(db, merged)
+        except Exception:
+            log.exception("Paging failed for %s", existing["id"])
+        merged = get_approval(db, existing["id"]) or merged
+    return merged
 
 
 def get_approval(db: Database, approval_id: str) -> dict | None:
@@ -922,6 +983,7 @@ def schedule_checkin(db: Database, doc: dict) -> dict:
         if resolved and resolved != raw:
             doc["scheduled_for"] = resolved
             doc["scheduled_for_raw"] = raw
+        doc["scheduled_for_resolved"] = bool(resolved)
     checkin = {"id": new_id("chk"), "status": "scheduled", "created_at": utcnow(), **doc}
     db.checkins.insert_one(dict(checkin))
     return checkin
