@@ -172,8 +172,10 @@ def _remote_embeddings(provider: str):
         from langchain.embeddings import init_embeddings
 
         model = init_embeddings(model_name, provider=provider, **_provider_kwargs(provider, key, base_url))
-    model.dimensions = len(model.embed_query("dimension probe"))  # type: ignore[attr-defined]
-    model.provider_label = f"{provider}:{model_name}"  # type: ignore[attr-defined]
+    # object.__setattr__: some providers (Voyage) are pydantic models that
+    # reject unknown attributes through normal assignment.
+    object.__setattr__(model, "dimensions", len(model.embed_query("dimension probe")))
+    object.__setattr__(model, "provider_label", f"{provider}:{model_name}")
     return model
 
 
