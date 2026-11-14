@@ -5,6 +5,7 @@ import { CallBar, useCall } from "../calls";
 import { useApp } from "../state";
 import { cx, initials } from "../ui";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
+import { AssistantPanel } from "../assistant/Assistant";
 import { HotkeyHelp } from "./HotkeyHelp";
 import { Icon as GlyphIcon } from "./Icon";
 import { WelcomeTour } from "./WelcomeTour";
@@ -149,6 +150,7 @@ export function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [tourSeen, setTourSeen] = useState(() => typeof localStorage !== "undefined" && localStorage.getItem(TOUR_KEY) === "1");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -232,7 +234,7 @@ export function Layout() {
       }
       if (key === "a") {
         event.preventDefault();
-        navigate(agentHref);
+        setAssistantOpen(true);
         return;
       }
       if (key === "k") {
@@ -256,7 +258,7 @@ export function Layout() {
       { id: "patients", label: "Go to Patients", icon: "users", keys: ["g", "p"], run: () => navigate("/patients") },
       { id: "approvals", label: "Go to Decisions", icon: "check", keys: ["g", "a"], run: () => navigate("/approvals") },
       { id: "audit", label: "Go to Audit log", icon: "document", keys: ["g", "l"], run: () => navigate("/audit") },
-      { id: "ask", label: "Ask Continuum", icon: "chat", keys: ["a"], run: () => navigate(agentHref) },
+      { id: "ask", label: "Ask Continuum", icon: "chat", keys: ["a"], run: () => setAssistantOpen(true) },
       { id: "search", label: "Focus search", icon: "search", keys: ["/"], run: () => window.setTimeout(() => searchRef.current?.focus(), 0) },
       { id: "tour", label: "Show welcome tour", icon: "sparkle", run: () => setTourSeen(false) },
       { id: "help", label: "Show keyboard shortcuts", icon: "command", keys: ["?"], run: () => setHelpOpen(true) },
@@ -420,9 +422,9 @@ export function Layout() {
             >
               ?
             </button>
-            <Link className="btn top-ask" to={agentHref}>
+            <button type="button" className="btn top-ask" onClick={() => setAssistantOpen((o) => !o)} aria-expanded={assistantOpen}>
               Ask Continuum
-            </Link>
+            </button>
           </div>
         </header>
 
@@ -462,6 +464,7 @@ export function Layout() {
           setHelpOpen(true);
         }}
       />
+      <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} />
       <CommandPalette open={paletteOpen} actions={paletteActions} onClose={() => setPaletteOpen(false)} />
       <HotkeyHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
