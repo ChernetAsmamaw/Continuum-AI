@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useApp } from "../state";
 import type { Approval } from "../types";
+import { approvalKind } from "../tones";
 import { cx, formatDateTime, pct } from "../ui";
 
 function waited(iso: string): string {
@@ -42,6 +43,7 @@ export function ApprovalCard({
   const isConflict = approval.kind === "resolve_conflict" && approval.mode !== "interrupt";
   const isUrgent = approval.urgency === "urgent" || approval.urgency === "emergency";
   const lastPage = approval.pages?.at(-1);
+  const kind = approvalKind(approval);
 
   const acknowledge = async () => {
     setError(null);
@@ -131,24 +133,19 @@ export function ApprovalCard({
       <div className="approval-head">
         <div>
           <div className="tag-row">
-            <span className={cx("tag", approval.mode === "interrupt" ? "tag-purple" : "tag-amber")}>
-              {approval.mode === "interrupt" ? "Paused run" : "Queued review"}
-            </span>
-            <span className="tag tag-muted">{approval.kind.replace(/_/g, " ")}</span>
-            {isUrgent ? (
-              <span className={cx("tag", approval.urgency === "emergency" ? "tag-danger" : "tag-amber")}>{approval.urgency}</span>
-            ) : null}
-            {pending ? <span className="tag tag-muted" title={formatDateTime(approval.created_at)}>waiting {waited(approval.created_at)}</span> : null}
+            <span className={cx("tag-tone", `tone-${kind.tone}`)}>{kind.label}</span>
+            {isUrgent ? <span className="tag-tone tone-red">{approval.urgency}</span> : null}
+            {approval.mode === "interrupt" ? <span className="tag-tone tone-violet">Assistant is paused</span> : null}
             {approval.status !== "pending" ? (
-              <span className={cx("tag", approval.status === "approved" ? "tag-green" : "tag-danger")}>
-                {approval.status}
+              <span className={cx("tag-tone", approval.status === "approved" ? "tone-green" : "tone-red")}>
+                {approval.status === "approved" ? "Approved" : "Rejected"}
               </span>
             ) : null}
           </div>
           <h3>{approval.title}</h3>
-          <small className="muted">
-            {formatDateTime(approval.created_at)}
-            {approval.confidence !== undefined ? ` · confidence ${pct(approval.confidence)}` : ""}
+          <small className="muted" title={formatDateTime(approval.created_at)}>
+            {pending ? `Waiting ${waited(approval.created_at)}` : formatDateTime(approval.created_at)}
+            {approval.confidence !== undefined ? `. Assistant confidence ${pct(approval.confidence)}` : ""}
           </small>
         </div>
       </div>
@@ -156,10 +153,10 @@ export function ApprovalCard({
       {isUrgent ? (
         <p className={cx("approval-page", lastPage && !lastPage.ok && "approval-page-failed")}>
           {approval.acknowledged_at
-            ? `Acknowledged by ${approval.acknowledged_by} · ${formatDateTime(approval.acknowledged_at)}`
+            ? `Acknowledged by ${approval.acknowledged_by} on ${formatDateTime(approval.acknowledged_at)}`
             : lastPage
               ? lastPage.ok
-                ? `On-call clinician paged ${approval.pages?.length}× · last ${formatDateTime(lastPage.at)}`
+                ? `On-call clinician paged ${approval.pages?.length} ${approval.pages?.length === 1 ? "time" : "times"}, last on ${formatDateTime(lastPage.at)}`
                 : `Page could not be sent: ${lastPage.detail}`
               : "Not paged yet"}
         </p>
@@ -168,28 +165,33 @@ export function ApprovalCard({
       <p className="approval-rationale">{approval.rationale}</p>
 
       {approval.evidence_summary ? (
-        <div className="approval-evidence">
-          <span>
-            Evidence on file
+        <div className={cx("approval-evidence", approval.clinic_evidence ? "ev-record" : "ev-report")}>
+          <span className="ev-label">
             {approval.clinic_evidence ? (
-              <span className="tag tag-green" title={approval.clinic_evidence.source_ref}>
+              <span className="tag-tone tone-blue" title={approval.clinic_evidence.source_ref}>
                 Clinic record
               </span>
-            ) : null}
-            {approval.source === "scheduler" ? <span className="tag tag-blue">Follow-through</span> : null}
+            ) : approval.source === "scheduler" ? (
+              <span className="tag-tone tone-neutral">Found by the daily check</span>
+            ) : (
+              <span className="tag-tone tone-amber">Reported, not yet proven</span>
+            )}
           </span>
-          {approval.evidence_summary}
+          <p>{approval.evidence_summary}</p>
         </div>
       ) : null}
 
       {changes.length > 0 ? (
         <div className="approval-changes">
-          {changes.map((change) => (
-            <div key={change.key}>
-              <span>{change.key}</span>
-              <b>{change.value}</b>
-            </div>
-          ))}
+          <span className="approval-changes-label">If you approve</span>
+          <dl>
+            {changes.map((change) => (
+              <div key={change.key}>
+                <dt>{change.key.charAt(0).toUpperCase() + change.key.slice(1)}</dt>
+                <dd>{(change.value.charAt(0).toUpperCase() + change.value.slice(1)).replace(/_/g, " ")}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       ) : null}
 

@@ -7811,7 +7811,7 @@ button.metric {
 .pt-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); padding-bottom: 8px; overflow-x: auto; }
 .pt-tabs button { border: 0; background: none; padding: 5px 8px; border-radius: 4px; color: var(--ink-2); font-size: 13.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
 .pt-tabs button:hover { color: var(--ink); }
-.pt-tabs button.on { background: #e9e8e3; color: var(--ink); font-weight: 700; }
+.pt-tabs button.on { background: var(--paper-2); color: var(--ink); font-weight: 700; }
 
 .pt-cols { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
 .pt-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }

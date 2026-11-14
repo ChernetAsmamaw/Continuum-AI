@@ -85,8 +85,9 @@ export function CareClock({ tcm, patientId, onChanged }: { tcm: TcmState; patien
       <div className="clock-head">
         <h2>30 days after discharge</h2>
         <span className="clock-rule muted">
-          Contact in 2 business days · visit in {windowDays} days
-          {tcm.med_rec_due ? ` · medication reconciliation by ${formatDate(tcm.med_rec_due)}` : ""}
+          <span>Contact within 2 business days</span>
+          <span>Visit within {windowDays} days</span>
+          {tcm.med_rec_due ? <span>Medications reconciled by {formatDate(tcm.med_rec_due)}</span> : null}
         </span>
       </div>
 
@@ -127,7 +128,7 @@ export function CareClock({ tcm, patientId, onChanged }: { tcm: TcmState; patien
           <details className="clock-attempts">
             <summary>
               {attempts.length} contact attempt{attempts.length === 1 ? "" : "s"}
-              {last ? ` · last ${formatDateTime(last.at)}, ${(OUTCOME_LABEL[last.outcome] || last.outcome).toLowerCase()}` : ""}
+              {last ? `. Last on ${formatDateTime(last.at)}: ${(OUTCOME_LABEL[last.outcome] || last.outcome).toLowerCase()}` : ""}
             </summary>
             <ol>
               {attempts.map((c) => (

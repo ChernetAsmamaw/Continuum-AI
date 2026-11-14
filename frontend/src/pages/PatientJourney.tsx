@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
-import { ActionList } from "../components/ActionLedger";
 import { ApprovalCard } from "../components/ApprovalCard";
 import { CareClock } from "../components/CareClock";
 import { ChatPanel } from "../components/ChatPanel";
@@ -12,55 +11,86 @@ import { ObligationCard } from "../components/ObligationCard";
 import { RecordActions } from "../components/RecordActions";
 import { LogContactButton } from "../components/TcmPanel";
 import { useApp } from "../state";
+import { approvalKind, eventKind, obligationTone, type Tone } from "../tones";
 import type { Approval, Evidence, EventItem, Journey, LedgerAction, Obligation } from "../types";
-import { Empty, ErrorBanner, Spinner, cx, formatDate, formatDateTime } from "../ui";
+import { Empty, ErrorBanner, Spinner, cx, formatDate } from "../ui";
 
 /**
- * Patient page, after the design review: name and the facts that identify
- * the person, the 30-day clock, then one list of follow-ups grouped by who
- * is waiting on whom. A row opens in place to show its evidence and actions.
- * Contact details sit beside the list. History and the assistant are tabs.
+ * Patient page. Reading order: who this is, what is late, what needs a
+ * person, what everyone else is waiting on. Color is a status signal only
+ * (see src/tones.ts): red late, amber waiting on a person, green done,
+ * blue a clinic record, violet a call.
  */
 
 type Tab = "followups" | "history" | "ask";
 
 const NEEDS = new Set(["overdue", "conflict", "patient_reported", "escalated", "unknown"]);
-const DONE = new Set(["verified", "cancelled"]);
 
 function firstName(name: string): string {
   return name.split(" ")[0] || name;
 }
 
-function sentence(text?: string | null): string {
+function sentence(text?: string | null, max = 150): string {
   if (!text) return "";
   const clean = text.replace(/\s+/g, " ").trim();
-  if (clean.length <= 150) return clean;
-  const cut = clean.slice(0, 147);
-  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 100)).trimEnd()}…`;
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max - 3);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), max - 50)).trimEnd()}…`;
 }
 
-function whenFor(o: Obligation, approval?: Approval): { text: string; red?: boolean; strong?: boolean } {
+const shortDate = (iso?: string | null) => formatDate(iso, { year: undefined });
+
+function timeOf(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : new Intl.DateTimeFormat("en-CA", { hour: "numeric", minute: "2-digit" }).format(d);
+}
+
+function dayKey(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+function dayLabel(key: string, today?: string): string {
+  if (today && key === today) return "Today";
+  if (today) {
+    const y = new Date(`${today}T12:00:00`);
+    y.setDate(y.getDate() - 1);
+    if (y.toISOString().slice(0, 10) === key) return "Yesterday";
+  }
+  return formatDate(key, { weekday: "long", month: "long", day: "numeric", year: undefined });
+}
+
+function waited(iso: string): string {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} h`;
+  return `${Math.round(hours / 24)} days`;
+}
+
+/** The status label on the right of a row, with its tone. */
+function statusFor(o: Obligation, approval?: Approval): { text: string; tone: Tone; badge?: boolean } {
   if (approval) {
     const urgent = approval.urgency === "urgent" || approval.urgency === "emergency";
-    return urgent ? { text: approval.urgency as string, red: true } : { text: "needs your decision", strong: true };
+    const kind = approvalKind(approval);
+    return urgent ? { text: `${approval.urgency}`, tone: "red", badge: true } : { text: kind.label, tone: kind.tone === "neutral" ? "amber" : kind.tone };
   }
   switch (o.status) {
     case "overdue":
-      return { text: o.days_overdue ? `${o.days_overdue} day${o.days_overdue === 1 ? "" : "s"} overdue` : "overdue", red: true };
+      return { text: o.days_overdue ? `${o.days_overdue} day${o.days_overdue === 1 ? "" : "s"} overdue` : "Overdue", tone: "red" };
     case "conflict":
-      return { text: "two dates on record" };
+      return { text: "Two dates on record", tone: "amber" };
     case "patient_reported":
-      return { text: "needs proof" };
+      return { text: "Needs proof", tone: "amber" };
     case "escalated":
-      return { text: "with the clinician" };
+      return { text: "With the clinician", tone: "red" };
     case "scheduled":
-      return { text: o.confirmed_date ? `booked ${formatDate(o.confirmed_date)}` : `due ${formatDate(o.due_date)}` };
+      return { text: o.confirmed_date ? `Booked ${shortDate(o.confirmed_date)}` : `Due ${shortDate(o.due_date)}`, tone: "blue" };
     case "verified":
-      return { text: `verified ${formatDate(o.clinic_completed_on || o.updated_at)}` };
+      return { text: `Verified ${shortDate(o.clinic_completed_on || o.updated_at)}`, tone: "green" };
     case "cancelled":
-      return { text: "cancelled" };
+      return { text: "Cancelled", tone: "neutral" };
     default:
-      return { text: o.due_date ? `due ${formatDate(o.due_date)}` : "no date" };
+      return { text: o.due_date ? `Due ${shortDate(o.due_date)}` : "No date", tone: "neutral" };
   }
 }
 
@@ -68,13 +98,16 @@ function subFor(o: Obligation, approval?: Approval): string {
   if (approval) return sentence(approval.rationale || approval.title);
   const conflict = (o.conflicts || []).find((c) => !c.resolved);
   if (o.status === "conflict" && conflict) {
-    return `Clinic record says ${conflict.recorded_value || "—"}; the patient says ${conflict.reported_value || "—"}.`;
+    return `Clinic record says ${conflict.recorded_value || "nothing"}. The patient says ${conflict.reported_value || "nothing"}.`;
   }
   if (o.status === "overdue" && o.next_action) return sentence(o.next_action);
   if (o.latest_evidence) return sentence(o.latest_evidence);
   if (o.next_action) return sentence(o.next_action);
-  if (o.source?.label) return `From ${o.source.label}.`;
   return `Owner: ${o.owner}.`;
+}
+
+function Status({ text, tone, badge }: { text: string; tone: Tone; badge?: boolean }) {
+  return <span className={cx("fu-status", `tone-${tone}`, badge && "fu-badge")}>{text}</span>;
 }
 
 function FollowUpRow({
@@ -92,18 +125,17 @@ function FollowUpRow({
   onToggle: () => void;
   onChanged: () => void;
 }) {
-  const when = whenFor(obligation, approval);
-  const done = DONE.has(obligation.status);
-  const overdue = obligation.status === "overdue";
+  const status = statusFor(obligation, approval);
+  const tone = approval ? (status.tone === "red" ? "red" : "amber") : obligationTone(obligation);
+  const done = !obligation.is_open;
   return (
-    <div className={cx("fu-row", overdue && "fu-overdue", done && "fu-done", open && "fu-open")}>
+    <div className={cx("fu-row", `fu-${tone}`, done && "fu-done", open && "fu-open")}>
       <button type="button" className="fu-main" onClick={onToggle} aria-expanded={open}>
-        <span className={cx("fu-dot", (overdue || when.red) && "fu-dot-red", done && "fu-dot-done")} aria-hidden="true" />
+        <span className={cx("dot", `dot-${tone}`)} aria-hidden="true" />
         <b className="fu-title">{obligation.description}</b>
-        <span className={cx("fu-when", when.red && "fu-red", when.strong && "fu-strong")}>{when.text}</span>
-        <span className="fu-sub">
-          {subFor(obligation, approval)} <u>{open ? "Close" : approval ? "Decide →" : "Open →"}</u>
-        </span>
+        <Status {...status} />
+        <span className="fu-sub">{subFor(obligation, approval)}</span>
+        <span className="fu-chev" aria-hidden="true" />
       </button>
       {open ? (
         <div className="fu-detail">
@@ -115,60 +147,68 @@ function FollowUpRow({
   );
 }
 
-function waited(iso: string): string {
-  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 48) return `${hours} h ago`;
-  return `${Math.round(hours / 24)} days ago`;
-}
-
 function DecisionRow({ approval }: { approval: Approval }) {
+  const kind = approvalKind(approval);
   const urgent = approval.urgency === "urgent" || approval.urgency === "emergency";
   return (
-    <Link to="/approvals" className={cx("fu-row fu-link", urgent && "fu-overdue")}>
-      <span className={cx("fu-dot", urgent && "fu-dot-red")} aria-hidden="true" />
-      <b className="fu-title">{approval.title}</b>
-      <span className={cx("fu-when", urgent && "fu-red")}>{urgent ? approval.urgency : waited(approval.created_at)}</span>
-      <span className="fu-sub">
-        {sentence(approval.rationale)} <u>Decide →</u>
-      </span>
-    </Link>
+    <div className={cx("fu-row", `fu-${kind.tone}`)}>
+      <Link to={`/approvals?id=${approval.id}`} className="fu-main">
+        <span className={cx("dot", `dot-${urgent ? "red" : "amber"}`)} aria-hidden="true" />
+        <b className="fu-title">{approval.title}</b>
+        {urgent ? <Status text={`${approval.urgency}`} tone="red" badge /> : <Status text={kind.label} tone={kind.tone === "neutral" ? "amber" : kind.tone} />}
+        <span className="fu-sub">{sentence(approval.rationale, 140)}</span>
+        <span className="fu-chev" aria-hidden="true" />
+      </Link>
+    </div>
   );
 }
 
-function Group({ label, count, children }: { label: string; count: number; children: ReactNode }) {
+function Group({ label, count, tone, hint, children }: { label: string; count: number; tone: Tone; hint: string; children: ReactNode }) {
   return (
-    <>
-      <div className="fu-group">
-        {label} · {count}
-      </div>
-      {count === 0 ? <div className="fu-empty muted">Nothing.</div> : children}
-    </>
+    <section className={cx("fu-group", `fu-group-${tone}`)}>
+      <header>
+        <h3>{label}</h3>
+        <span className="fu-count">{count}</span>
+        <span className="fu-hint">{hint}</span>
+      </header>
+      {count === 0 ? <p className="fu-empty">Nothing here.</p> : children}
+    </section>
   );
 }
 
-function HistoryRow({ event }: { event: EventItem }) {
+function HistoryItem({ event }: { event: EventItem }) {
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const kind = eventKind(event);
   const lines = event.transcript || [];
+  const long = (event.detail || "").length > 180;
   return (
-    <div className="hist-row">
-      <span className="mono muted hist-time">{formatDateTime(event.occurred_at)}</span>
+    <li className={cx("hist-item", `hist-${kind.tone}`)}>
+      <span className="hist-time">{timeOf(event.occurred_at)}</span>
+      <span className={cx("hist-dot", `dot-${kind.tone}`)} aria-hidden="true" />
       <div className="hist-body">
-        <b>{event.title}</b>
-        {event.detail ? <p>{event.detail}</p> : null}
-        <small className="muted">
-          {event.actor || "Continuum"}
-          {event.source_ref ? ` · ${event.source_ref}` : ""}
-          {lines.length ? (
-            <>
-              {" · "}
-              <button type="button" className="link-button" onClick={() => setOpen((v) => !v)}>
-                {open ? "Hide transcript" : `Transcript (${lines.length})`}
-              </button>
-            </>
+        <div className="hist-head">
+          <b>{event.title}</b>
+          <span className={cx("tag-tone", `tone-${kind.tone}`)}>{kind.label}</span>
+        </div>
+        {event.detail ? (
+          <p className={cx("hist-detail", long && !expanded && "clamp")}>
+            {event.detail}
+          </p>
+        ) : null}
+        <div className="hist-meta">
+          <span>{event.actor || "Continuum"}</span>
+          {long ? (
+            <button type="button" className="hist-link" onClick={() => setExpanded((v) => !v)}>
+              {expanded ? "Show less" : "Show all"}
+            </button>
           ) : null}
-        </small>
+          {lines.length ? (
+            <button type="button" className="hist-link" onClick={() => setOpen((v) => !v)}>
+              {open ? "Hide transcript" : `Transcript, ${lines.length} turns`}
+            </button>
+          ) : null}
+        </div>
         {open ? (
           <div className="transcript">
             {lines.map((line, index) => (
@@ -180,13 +220,47 @@ function HistoryRow({ event }: { event: EventItem }) {
           </div>
         ) : null}
       </div>
-    </div>
+    </li>
+  );
+}
+
+const ACTION_TONE: Record<string, Tone> = { confirmed: "green", sent: "blue", intended: "neutral", failed: "red", unconfirmed: "amber", unknown: "amber" };
+const ACTION_LABEL: Record<string, string> = { confirmed: "Confirmed", sent: "Waiting for proof", intended: "Not sent yet", failed: "Failed", unconfirmed: "No proof", unknown: "Unknown" };
+
+function ActionsCompact({ actions }: { actions: LedgerAction[] }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? actions : actions.slice(0, 6);
+  return (
+    <>
+      <ul className="act-list">
+        {shown.map((a) => {
+          const tone = ACTION_TONE[a.status] || "neutral";
+          return (
+            <li key={a.id}>
+              <span className={cx("dot", `dot-${tone}`)} aria-hidden="true" />
+              <span className="act-main">
+                <b>{a.summary}</b>
+                <small>
+                  {a.status === "confirmed" ? a.confirmation || a.history.at(-1)?.detail : a.proof_expected ? `Waiting for ${a.proof_expected.toLowerCase()}` : a.history.at(-1)?.detail}
+                </small>
+              </span>
+              <span className={cx("act-status", `tone-${tone}`)}>{ACTION_LABEL[a.status] || a.status}</span>
+            </li>
+          );
+        })}
+      </ul>
+      {actions.length > 6 ? (
+        <button type="button" className="hist-link act-more" onClick={() => setAll((v) => !v)}>
+          {all ? "Show fewer" : `Show all ${actions.length}`}
+        </button>
+      ) : null}
+    </>
   );
 }
 
 export function PatientJourney() {
   const { patientId = "" } = useParams();
-  const { refreshKey, refresh, dashboard } = useApp();
+  const { refreshKey, refresh, dashboard, config } = useApp();
   const [journey, setJourney] = useState<Journey | null>(null);
   const [actions, setActions] = useState<LedgerAction[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -194,6 +268,7 @@ export function PatientJourney() {
   const [tab, setTab] = useState<Tab>("followups");
   const [openRow, setOpenRow] = useState<string | null>(null);
   const moreRef = useRef<HTMLDetailsElement>(null);
+  const [showAll, setShowAll] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     if (!patientId) return;
@@ -219,6 +294,16 @@ export function PatientJourney() {
     setOpenRow(null);
   }, [patientId]);
 
+  const days = useMemo(() => {
+    const groups = new Map<string, EventItem[]>();
+    for (const e of journey?.events || []) {
+      const key = dayKey(e.occurred_at);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(e);
+    }
+    return [...groups.entries()];
+  }, [journey?.events]);
+
   if (loading && !journey) return <Spinner label="Loading patient" />;
   if (error && !journey) return <ErrorBanner message={error} onRetry={load} />;
   if (!journey) return <Empty>Patient not found.</Empty>;
@@ -235,10 +320,14 @@ export function PatientJourney() {
   for (const a of pending) if (a.obligation_id && !decisionFor.has(a.obligation_id)) decisionFor.set(a.obligation_id, a);
   const otherDecisions = pending.filter((a) => !a.obligation_id || decisionFor.get(a.obligation_id) !== a);
   const open = journey.obligations.filter((o) => o.is_open);
-  const needs = open.filter((o) => NEEDS.has(o.status) || decisionFor.has(o.id));
+  const needs = open
+    .filter((o) => NEEDS.has(o.status) || decisionFor.has(o.id))
+    .sort((a, b) => (a.status === "overdue" ? -1 : 0) - (b.status === "overdue" ? -1 : 0));
   const waiting = open.filter((o) => !NEEDS.has(o.status) && !decisionFor.has(o.id));
   const done = journey.obligations.filter((o) => !o.is_open);
   const identity = patient.identity_review?.status === "needed";
+  const overdue = open.filter((o) => o.status === "overdue").length;
+  const urgent = pending.filter((a) => a.urgency === "urgent" || a.urgency === "emergency").length;
   const needsCount = needs.length + otherDecisions.length + (identity ? 1 : 0);
 
   const changed = async () => {
@@ -246,21 +335,6 @@ export function PatientJourney() {
     await refresh();
   };
   const closeMore = () => moreRef.current?.removeAttribute("open");
-
-  const windowDays = tcm?.visit_window_days;
-  const meta = [
-    patient.age ? `${patient.age}` : null,
-    patient.birth_date ? `DOB ${patient.birth_date}` : null,
-    `MRN ${patient.mrn}`,
-    patient.pronouns || null,
-    windowDays ? `${windowDays}-day visit window` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
-  const stay = episode
-    ? `${episode.admission_date ? `Admitted ${formatDate(episode.admission_date)}, ` : ""}${episode.admission_date ? "d" : "D"}ischarged ${formatDate(episode.discharge_date)}. ${episode.reason || patient.condition}.`
-    : `${patient.condition}. No active episode.`;
 
   const evidenceFor = (o: Obligation) => journey.evidence[o.id] || [];
   const row = (o: Obligation) => (
@@ -275,6 +349,9 @@ export function PatientJourney() {
     />
   );
 
+  const day = tcm?.days_since_discharge;
+  const highRisk = patient.risk === "High";
+
   return (
     <div className="pt">
       <nav className="breadcrumb" aria-label="Breadcrumb">
@@ -283,13 +360,60 @@ export function PatientJourney() {
 
       <header className="pt-head">
         <div className="pt-id">
-          <h1>{patient.name}</h1>
-          <p className="pt-meta mono">{meta}</p>
+          <div className="pt-name">
+            <h1>{patient.name}</h1>
+            {patient.pronouns ? <span className="pt-pronouns">{patient.pronouns}</span> : null}
+          </div>
+          <p className="pt-condition">{episode?.reason || patient.condition}</p>
           <p className="pt-stay">
-            {stay}
-            {patient.risk === "High" ? <span className="pt-risk"> High readmission risk.</span> : null}
-            {prefs.interpreter_needed ? ` Interpreter needed (${prefs.language || "language on file"}).` : ""}
+            {episode ? (
+              <>
+                Discharged {formatDate(episode.discharge_date)}
+                {episode.admission_date ? ` after a stay from ${shortDate(episode.admission_date)}` : ""}.
+                {day !== undefined && day !== null ? ` Day ${Math.max(0, day)} of 30.` : ""}
+              </>
+            ) : (
+              "No active hospital stay."
+            )}
           </p>
+          <dl className="pt-facts">
+            <div>
+              <dt>Age</dt>
+              <dd>{patient.age}</dd>
+            </div>
+            <div>
+              <dt>Born</dt>
+              <dd>{patient.birth_date ? formatDate(patient.birth_date) : "Not recorded"}</dd>
+            </div>
+            <div>
+              <dt>MRN</dt>
+              <dd className="pt-mrn">{patient.mrn}</dd>
+            </div>
+            <div>
+              <dt>Readmission risk</dt>
+              <dd className={cx(highRisk && "tone-red", patient.risk === "Medium" && "tone-amber")}>{patient.risk}</dd>
+            </div>
+            {tcm?.visit_window_days ? (
+              <div>
+                <dt>Visit window</dt>
+                <dd>{tcm.visit_window_days} days</dd>
+              </div>
+            ) : null}
+            {prefs.interpreter_needed ? (
+              <div>
+                <dt>Interpreter</dt>
+                <dd className="tone-amber">{prefs.language || "Needed"}</dd>
+              </div>
+            ) : null}
+          </dl>
+          <div className="pt-flags" aria-label="What needs attention">
+            {overdue ? <span className="flag tone-red">{overdue} overdue</span> : null}
+            {urgent ? <span className="flag tone-red">{urgent} urgent</span> : null}
+            {pending.length ? <span className="flag tone-amber">{pending.length} {pending.length === 1 ? "decision" : "decisions"} waiting</span> : null}
+            {waiting.length ? <span className="flag tone-blue">{waiting.length} waiting on others</span> : null}
+            {done.length ? <span className="flag tone-green">{done.length} done</span> : null}
+            {!overdue && !pending.length && !waiting.length && !done.length ? <span className="flag tone-neutral">No follow-ups yet</span> : null}
+          </div>
         </div>
         <div className="pt-actions">
           <details className="pt-more" ref={moreRef}>
@@ -314,10 +438,10 @@ export function PatientJourney() {
 
       {identity ? (
         <div className="pt-warn" role="status">
-          <span className="fu-dot fu-dot-red" aria-hidden="true" />
+          <span className="dot dot-red" aria-hidden="true" />
           <div>
-            <b>Is this the same {patient.name}?</b>{" "}
-            {patient.identity_review?.reason || "Another record matched by name only."} Records have not been merged.
+            <b>Is this the same {patient.name}?</b> {patient.identity_review?.reason || "Another record matched by name only."} The records have not
+            been merged.
           </div>
           <Link className="btn btn-small" to="/review#identity">
             Review
@@ -330,43 +454,45 @@ export function PatientJourney() {
       <div className="pt-tabs" role="tablist">
         {(
           [
-            ["followups", `Follow-ups`],
-            ["history", "History"],
-            ["ask", `Ask about ${first}`],
-          ] as [Tab, string][]
-        ).map(([key, label]) => (
+            ["followups", "Follow-ups", needsCount],
+            ["history", "History", journey.events.length],
+            ["ask", `Ask about ${first}`, null],
+          ] as [Tab, string, number | null][]
+        ).map(([key, label, n]) => (
           <button key={key} type="button" role="tab" aria-selected={tab === key} className={cx(tab === key && "on")} onClick={() => setTab(key)}>
             {label}
+            {n ? <span className={cx("pt-tab-n", key === "followups" && "tone-amber")}>{n}</span> : null}
           </button>
         ))}
       </div>
 
       {tab === "followups" ? (
         <div className="pt-cols">
-          <section className="pt-panel pt-list" aria-label="Follow-ups">
-            <Group label="Needs someone" count={needsCount}>
+          <div className="pt-list" aria-label="Follow-ups">
+            <Group label="Needs someone" count={needsCount} tone={overdue || urgent ? "red" : "amber"} hint="Late, disputed, or waiting for a decision">
               {identity ? (
-                <Link to="/review#identity" className="fu-row fu-link fu-overdue">
-                  <span className="fu-dot fu-dot-red" aria-hidden="true" />
-                  <b className="fu-title">Is this the same {patient.name}?</b>
-                  <span className="fu-when fu-red">identity</span>
-                  <span className="fu-sub">
-                    {patient.identity_review?.reason || "Another record matched by name only."} <u>Review →</u>
-                  </span>
-                </Link>
+                <div className="fu-row fu-red">
+                  <Link to="/review#identity" className="fu-main">
+                    <span className="dot dot-red" aria-hidden="true" />
+                    <b className="fu-title">Is this the same {patient.name}?</b>
+                    <Status text="Identity check" tone="red" badge />
+                    <span className="fu-sub">{patient.identity_review?.reason || "Another record matched by name only."}</span>
+                    <span className="fu-chev" aria-hidden="true" />
+                  </Link>
+                </div>
               ) : null}
               {needs.map(row)}
               {otherDecisions.map((a) => (
                 <DecisionRow key={a.id} approval={a} />
               ))}
             </Group>
-            <Group label="Waiting on others" count={waiting.length}>
+            <Group label="Waiting on others" count={waiting.length} tone="blue" hint="Booked or in progress with a clinic">
               {waiting.map(row)}
             </Group>
-            <Group label="Done" count={done.length}>
+            <Group label="Done" count={done.length} tone="green" hint="Closed with proof">
               {done.map(row)}
             </Group>
-          </section>
+          </div>
 
           <aside className="pt-side">
             <section className="pt-panel">
@@ -378,7 +504,7 @@ export function PatientJourney() {
               </div>
               <dl className="pt-kv">
                 <dt>Phone</dt>
-                <dd className="mono-num">{patient.phone || <span className="pt-risk">None on file</span>}</dd>
+                <dd className="pt-phone">{patient.phone || <span className="tone-red">None on file</span>}</dd>
                 {patient.email ? (
                   <>
                     <dt>Email</dt>
@@ -388,44 +514,44 @@ export function PatientJourney() {
                 <dt>Best time</dt>
                 <dd>
                   {prefs.best_time || "Any"}
-                  {prefs.channel ? `, ${prefs.channel.toLowerCase()}` : ""}
+                  {prefs.channel ? <span className="muted">, {prefs.channel.toLowerCase()}</span> : null}
                 </dd>
                 <dt>Language</dt>
                 <dd>
                   {prefs.language || "English"}
-                  {prefs.interpreter_needed ? " · interpreter" : ""}
+                  {prefs.interpreter_needed ? <span className="tone-amber">, interpreter</span> : null}
                 </dd>
                 <dt>Caregiver</dt>
                 <dd>
                   {caregiver?.name || patient.caregiver ? (
                     <>
                       {caregiver?.name || patient.caregiver}
-                      {caregiver?.relationship ? `, ${caregiver.relationship}` : ""}
-                      {caregiver?.phone ? ` · ${caregiver.phone}` : ""}
-                      {caregiver?.may_discuss_care ? <small className="muted"> · may discuss care</small> : null}
+                      {caregiver?.relationship ? <span className="muted">, {caregiver.relationship}</span> : null}
+                      {caregiver?.phone ? <div className="pt-phone">{caregiver.phone}</div> : null}
+                      {caregiver?.may_discuss_care ? <div className="tone-green small">May discuss care</div> : null}
                     </>
                   ) : (
-                    "None"
+                    <span className="muted">None</span>
                   )}
                 </dd>
                 <dt>Automated calls</dt>
-                <dd>{prefs.consent_to_automated_calls ? "Allowed" : <span className="pt-risk">Not allowed</span>}</dd>
-                <dt>Call recording</dt>
-                <dd>{prefs.consent_to_recording ? "Allowed" : "Not allowed"}</dd>
+                <dd className={prefs.consent_to_automated_calls ? "tone-green" : "tone-red"}>{prefs.consent_to_automated_calls ? "Allowed" : "Not allowed"}</dd>
+                <dt>Recording</dt>
+                <dd className={prefs.consent_to_recording ? "tone-green" : "muted"}>{prefs.consent_to_recording ? "Allowed" : "Not allowed"}</dd>
                 {prefs.accessibility ? (
                   <>
                     <dt>Accessibility</dt>
-                    <dd>{prefs.accessibility}</dd>
+                    <dd className="tone-amber">{prefs.accessibility}</dd>
                   </>
                 ) : null}
                 <dt>Coordinator</dt>
-                <dd>{summary?.coordinator || "Unassigned"}</dd>
+                <dd>{summary?.coordinator || <span className="muted">Unassigned</span>}</dd>
               </dl>
             </section>
 
             <section className="pt-panel">
               <div className="pt-panel-head">
-                <h2>Stay</h2>
+                <h2>Hospital stay</h2>
               </div>
               {episode ? (
                 <dl className="pt-kv">
@@ -435,21 +561,19 @@ export function PatientJourney() {
                   <dd>{formatDate(episode.discharge_date)}</dd>
                   <dt>Reason</dt>
                   <dd>{episode.reason || patient.condition}</dd>
-                  <dt>Episode</dt>
-                  <dd className="mono muted">{episode.id}</dd>
                 </dl>
               ) : (
-                <p className="muted pt-panel-body">No active episode.</p>
+                <p className="muted pt-panel-body">No active hospital stay.</p>
               )}
-              <div className="pt-panel-foot">
-                <EpisodeActions patientId={patient.id} episode={episode} onChanged={changed} />
-              </div>
               {episode?.discharge_summary ? (
                 <details className="pt-doc">
-                  <summary>Discharge summary</summary>
+                  <summary>Read the discharge summary</summary>
                   <pre className="document-text">{episode.discharge_summary}</pre>
                 </details>
               ) : null}
+              <div className="pt-panel-foot">
+                <EpisodeActions patientId={patient.id} episode={episode} onChanged={changed} />
+              </div>
             </section>
           </aside>
         </div>
@@ -458,48 +582,77 @@ export function PatientJourney() {
       {tab === "history" ? (
         <div className="pt-cols">
           <div className="pt-stack">
+            <div className="hist-legend" aria-label="Legend">
+              <span><i className="dot dot-violet" /> Call</span>
+              <span><i className="dot dot-blue" /> Clinic or EHR record</span>
+              <span><i className="dot dot-amber" /> Decision</span>
+              <span><i className="dot dot-green" /> Verified</span>
+              <span><i className="dot dot-red" /> Alert</span>
+            </div>
+            {days.length === 0 ? (
+              <p className="fu-empty">No history yet.</p>
+            ) : (
+              days.map(([key, events]) => (
+                <section key={key} className="hist-day">
+                  <h3>
+                    {dayLabel(key, config?.demo_today)} <span className="fu-count">{events.length}</span>
+                  </h3>
+                  <ol className="hist-list">
+                    {(showAll.has(key) ? events : events.slice(0, 8)).map((event) => (
+                      <HistoryItem key={event.id} event={event} />
+                    ))}
+                  </ol>
+                  {events.length > 8 ? (
+                    <button
+                      type="button"
+                      className="hist-link hist-more"
+                      onClick={() =>
+                        setShowAll((cur) => {
+                          const next = new Set(cur);
+                          if (next.has(key)) next.delete(key);
+                          else next.add(key);
+                          return next;
+                        })
+                      }
+                    >
+                      {showAll.has(key) ? "Show fewer" : `Show ${events.length - 8} earlier events from this day`}
+                    </button>
+                  ) : null}
+                </section>
+              ))
+            )}
+            <Link to="/audit" className="hist-link">
+              Open the full audit log
+            </Link>
+          </div>
+          <aside className="pt-side">
+            {actions && actions.length ? (
+              <section className="pt-panel">
+                <div className="pt-panel-head">
+                  <h2>Calls and tasks Continuum started</h2>
+                </div>
+                <ActionsCompact actions={actions} />
+              </section>
+            ) : null}
             {journey.checkins.length ? (
               <section className="pt-panel">
                 <div className="pt-panel-head">
                   <h2>Scheduled check-ins</h2>
                 </div>
-                {journey.checkins.map((c) => (
-                  <div key={c.id} className="hist-row">
-                    <span className="mono muted hist-time">{formatDate(c.scheduled_for)}</span>
-                    <div className="hist-body">
-                      <b>{c.reason}</b>
-                      <small className="muted">{c.status.replace(/_/g, " ")}</small>
-                    </div>
-                  </div>
-                ))}
+                <ul className="act-list">
+                  {journey.checkins.map((c) => (
+                    <li key={c.id}>
+                      <span className={cx("dot", c.status.includes("review") || c.status.includes("manual") ? "dot-amber" : "dot-blue")} aria-hidden="true" />
+                      <span className="act-main">
+                        <b>{sentence(c.reason, 90)}</b>
+                        <small>{shortDate(c.scheduled_for)}</small>
+                      </span>
+                      <span className="act-status tone-neutral">{c.status.replace(/_/g, " ")}</span>
+                    </li>
+                  ))}
+                </ul>
               </section>
             ) : null}
-            {actions && actions.length ? (
-              <section className="pt-panel">
-                <div className="pt-panel-head">
-                  <h2>Calls and tasks Continuum started</h2>
-                  <span className="muted">{actions.length}</span>
-                </div>
-                <div className="pt-panel-body">
-                  <ActionList actions={actions} compact />
-                </div>
-              </section>
-            ) : null}
-            <section className="pt-panel" aria-label="History">
-              <div className="pt-panel-head">
-                <h2>History</h2>
-                <Link to={`/audit?patient=${patient.id}`} className="muted">
-                  Full audit log →
-                </Link>
-              </div>
-              {journey.events.length === 0 ? (
-                <p className="muted pt-panel-body">No history yet.</p>
-              ) : (
-                journey.events.map((event) => <HistoryRow key={event.id} event={event} />)
-              )}
-            </section>
-          </div>
-          <aside className="pt-side">
             <MemoryPanel patientId={patient.id} memories={journey.memories} title="What Continuum remembers" compact />
           </aside>
         </div>
@@ -514,11 +667,10 @@ export function PatientJourney() {
                 <h2>How answers are made</h2>
               </div>
               <p className="pt-panel-body muted">
-                Every answer is checked against the clinic record. A patient's word is recorded, never treated as proof. Sensitive changes wait for a
-                person. <Link to={`/patients/${patient.id}/agent`}>See the last run →</Link>
+                Every answer is checked against the clinic record. A patient's word is recorded but never treated as proof, and sensitive changes wait for a
+                person. <Link to={`/patients/${patient.id}/agent`}>See the last run</Link>
               </p>
             </section>
-            <MemoryPanel patientId={patient.id} memories={journey.memories} title="What Continuum remembers" compact />
           </aside>
         </div>
       ) : null}
