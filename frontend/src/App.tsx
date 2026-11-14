@@ -9,6 +9,7 @@ import { CallRoom } from "./pages/CallRoom";
 import { CheckinPage } from "./pages/CheckinPage";
 import { ApprovalsPage } from "./pages/ApprovalsPage";
 import { Dashboard } from "./pages/Dashboard";
+import { DemoEntry } from "./pages/DemoEntry";
 import { IngestionPage } from "./pages/IngestionPage";
 import { Inspector } from "./pages/Inspector";
 import { Landing } from "./pages/Landing";
@@ -35,6 +36,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/demo" element={<DemoEntry />} />
           <Route path="/checkin/:token" element={<CheckinPage />} />
           <Route element={<RequireAuth />}>
             <Route element={<AppProvider><Layout /></AppProvider>}>
