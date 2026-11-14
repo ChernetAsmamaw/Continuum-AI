@@ -26,7 +26,11 @@ def _wait(client, session_id, status="ended", timeout=30):
     raise AssertionError("call did not finish")
 
 
-def test_modes_without_keys(client):
+def test_modes_without_keys(client, monkeypatch):
+    from app.config import settings
+
+    for name in ("elevenlabs_api_key", "elevenlabs_agent_id", "elevenlabs_phone_number_id"):
+        monkeypatch.setattr(settings, name, "")
     modes = client.get("/api/calls/modes").json()
     assert modes["simulated"]["available"] is True
     assert modes["browser"]["available"] is False and "ELEVENLABS_AGENT_ID" in modes["browser"]["why"]
