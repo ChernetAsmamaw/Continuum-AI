@@ -358,7 +358,52 @@ function Answers() {
   );
 }
 
-/* ── Built with ────────────────────────────────────────────────────────── */
+/* ── The problem, in numbers ─────────────────────────────────────────── */
+
+const STATS: { n: string; what: string; src: string; href: string }[] = [
+  {
+    n: "1 in 5",
+    what: "Medicare patients return to hospital within 30 days of discharge.",
+    src: "Jencks et al., NEJM 2009",
+    href: "https://pubmed.ncbi.nlm.nih.gov/19339721/",
+  },
+  {
+    n: "Half",
+    what: "of those readmitted after a medical stay never saw a doctor in between.",
+    src: "Jencks et al., NEJM 2009",
+    href: "https://pubmed.ncbi.nlm.nih.gov/19339721/",
+  },
+  {
+    n: "41%",
+    what: "of patients leave the hospital with test results still pending.",
+    src: "Roy et al., Annals of Internal Medicine 2005",
+    href: "https://pubmed.ncbi.nlm.nih.gov/16027454/",
+  },
+];
+
+/* ── How it meets the brief ────────────────────────────────────────────── */
+
+const BRIEF: { ask: string; built: string }[] = [
+  {
+    ask: "Complete a long, multi-step task across several systems",
+    built:
+      "A 30-day transition of care: the hospital's EHR (HL7 and FHIR), phone calls through ElevenLabs, texts and a patient portal, and the care team's console.",
+  },
+  {
+    ask: "Use MongoDB Atlas to persist verified task state",
+    built:
+      "Every follow-up, its evidence, every action and its outcome, the audit trail and the agent's checkpoints live in Atlas, with schema validation and change streams.",
+  },
+  {
+    ask: "Use Vector Search to retrieve relevant past experience",
+    built:
+      "Patient memory is searched by meaning, per patient, and new hospital orders are matched to ones Continuum has seen before.",
+  },
+  {
+    ask: "Survive crashes and system changes, and know what actually happened",
+    built: "The three answers below. Each one is working code you can try.",
+  },
+];
 
 const STACK: { name: string; role: string }[] = [
   { name: "MongoDB Atlas", role: "The shared record: follow-ups, evidence, every action, the audit trail, and the agent's checkpoints." },
@@ -381,21 +426,22 @@ export function Landing() {
           Continuum
         </Link>
         <nav className="lp-links" aria-label="Page sections">
+          <a href="#problem">The problem</a>
+          <a href="#solution">What it does</a>
           <a href="#flow">How it works</a>
-          <a href="#finish">Reliability</a>
-          <a href="#built">Built with</a>
+          <a href="#brief">How it's built</a>
         </nav>
         <Link to="/demo" className="lp-btn lp-btn-small">
           Open the demo
         </Link>
       </header>
 
-      <section className="lp-hero">
+      <section className="lp-hero lp-hero-story">
         <div className="lp-hero-copy">
-          <h1>Every follow-up after discharge, finished.</h1>
+          <h1>Leaving the hospital is when care falls through the cracks.</h1>
           <p className="lp-lede">
-            Continuum reads a patient's discharge plan, calls them to check in, chases what's late, and closes each follow-up only
-            when there's proof. The care team only sees what needs a person.
+            Every discharge comes with a plan: see your doctor in a week, repeat the bloodwork, a nurse will visit. Nobody owns
+            making sure it happens. Continuum is an AI agent that does, for all 30 days.
           </p>
           <div className="lp-cta">
             <Link to="/demo" className="lp-btn">
@@ -404,22 +450,58 @@ export function Landing() {
             <span className="lp-cta-note">One click, no sign-up. Synthetic patients only.</span>
           </div>
         </div>
-        <HeroDemo />
       </section>
 
       <main>
+        <section className="lp-section" id="problem">
+          <h2>The plan is written. Then it stalls.</h2>
+          <ul className="lp-stats">
+            {STATS.map((s) => (
+              <li key={s.n}>
+                <b>{s.n}</b>
+                <p>{s.what}</p>
+                <a href={s.href} target="_blank" rel="noreferrer">
+                  {s.src}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p className="lp-section-lede">
+            It isn't that nobody cares. The work is spread across the hospital, clinics, labs, pharmacies and phone calls, and
+            every one of them assumes someone else is following up. Results come back to nobody. Appointments never get booked.
+            The patient says "I'm fine" and nothing checks.
+          </p>
+        </section>
+
+        <section className="lp-section" id="solution">
+          <h2>Continuum finishes the plan</h2>
+          <p className="lp-section-lede">
+            It reads the discharge, turns it into follow-ups with owners and deadlines, calls the patient, chases what's late,
+            and closes each item only when there's proof. The care team only sees what needs a person. Watch one patient:
+          </p>
+          <HeroDemo />
+        </section>
+
         <section className="lp-section" id="flow">
-          <h2>Where the information goes</h2>
+          <h2>How it works</h2>
           <p className="lp-section-lede">Step through one discharge, from the hospital's record to a verified follow-up.</p>
           <FlowMap />
         </section>
 
-        <section className="lp-section" id="finish">
-          <h2>Built to finish the job</h2>
+        <section className="lp-section" id="brief">
+          <h2>Built for "Finish the Job"</h2>
           <p className="lp-section-lede">
-            Long tasks across several systems fail in quiet ways. These are the three that matter most, and what Continuum does
-            about each. Try them.
+            Continuum answers Statement Three of the MongoDB Agents in Context hackathon. Here is each requirement and what we
+            built for it.
           </p>
+          <dl className="lp-brief">
+            {BRIEF.map((b) => (
+              <div key={b.ask}>
+                <dt>{b.ask}</dt>
+                <dd>{b.built}</dd>
+              </div>
+            ))}
+          </dl>
           <Answers />
         </section>
 
@@ -437,7 +519,7 @@ export function Landing() {
 
         <section className="lp-final">
           <h2>See it working</h2>
-          <p>The console opens with a full synthetic caseload: overdue follow-ups, a live call room and the agent's reasoning.</p>
+          <p>The console opens with a full synthetic caseload: overdue follow-ups, a live call room and an assistant you can ask.</p>
           <Link to="/demo" className="lp-btn">
             Open the live demo
           </Link>
