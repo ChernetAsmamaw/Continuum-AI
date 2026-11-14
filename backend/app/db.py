@@ -116,7 +116,7 @@ def ensure_indexes() -> None:
     db.ingest_runs.create_index([("patient_id", ASCENDING)])
     db.ehr_poll_runs.create_index([("at", DESCENDING)])
 
-    # Hot paths found with explain() (docs/performance.md): each of these was
+    # Hot paths found with explain(): each of these was
     # a COLLSCAN (+ in-memory SORT for the dashboard feeds).
     db.events.create_index([("occurred_at", DESCENDING)])  # dashboard: recent events
     db.agent_audit.create_index([("created_at", DESCENDING)])  # dashboard: recent audit

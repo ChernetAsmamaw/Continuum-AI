@@ -6,9 +6,9 @@ and say during, and what to do when something breaks.
 ## The night before
 
 1. **Pull main and run the tests.** `cd backend && .venv/bin/python -m pytest -q` (all green).
-2. **Fill `.env`:** `MONGODB_URI` with `CONTINUUM_DB_MODE=atlas`, `LLM_API_KEY`
-   (plus `LLM_BASE_URL`/`LLM_MODEL` if not OpenAI), the ElevenLabs keys, and
-   `LANGCHAIN_TRACING_V2=true` with `LANGCHAIN_API_KEY`.
+2. **Fill `.env`:** `MONGODB_URI` with `CONTINUUM_DB_MODE=atlas`, `LLM_PROVIDER`
+   and `LLM_API_KEY`, the ElevenLabs keys, and `LANGSMITH_API_KEY` (tracing
+   turns on when it is set).
 3. **Check the vector index.** Start the API and run `curl -s localhost:8000/api/health`.
    You want `"vector_search": true`. If it's `false`, create the index from
    [atlas.md](atlas.md) section 3 and wait for **Ready**.

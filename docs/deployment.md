@@ -6,13 +6,11 @@ plus **MongoDB Atlas** (or an optional local MongoDB via the compose profile).
 
 ## 1. Prerequisites
 
-- A Linux VPS (2 GB RAM is plenty) with Docker + Compose, **and** Tailscale
-  installed **if** you keep the LLM on the tailnet-only gateway (see §5).
+- A Linux VPS (2 GB RAM is plenty) with Docker + Compose.
 - A MongoDB Atlas cluster (M0 free tier is fine to start).
 - A public HTTPS route to the container (Tailscale Funnel, Caddy, nginx, or
   any reverse proxy).
-- The `LLM_API_KEY` for whatever OpenAI-compatible gateway you use for
-  extraction.
+- An LLM API key (see §5), for example a Gemini key from Google AI Studio.
 
 ## 2. Configure `.env`
 
@@ -24,12 +22,9 @@ commit it):
 CONTINUUM_DB_MODE=atlas
 MONGODB_URI=mongodb+srv://user:pass@cluster.x.mongodb.net/continuum?tls=true
 
-# LLM (OpenAI-compatible endpoint used for document extraction)
-LLM_PROVIDER=openai
-LLM_MODEL=qwen3.8-27b
-LLM_BASE_URL=https://<gateway>/v1
-LLM_API_KEY=sk-...
-LLM_DISABLE_THINKING=true
+# LLM (any provider by API key; see docs/providers.md)
+LLM_PROVIDER=gemini
+LLM_API_KEY=<key>
 
 # Voice (ElevenLabs) — only needed for live calls
 ELEVENLABS_API_KEY=sk_...
@@ -110,24 +105,13 @@ The app is stateless with respect to the load balancer (all state is in
 MongoDB + LangGraph checkpoints), so scaling out to multiple containers is
 possible later; a single container is correct for a clinic pilot.
 
-## 5. The LLM gateway
+## 5. The LLM
 
-The default gateway in this project (`du-ai.*.ts.net:8443`) is a **Tailscale
-Funnel-only vLLM instance** — it is only reachable from inside the tailnet.
-
-Options for a clinic deployment:
-
-1. **Install Tailscale on the VPS** and keep using the gateway. The container
-   reaches it at `https://du-ai.<tailnet>.ts.net:8443/v1`. (Funnel URLs are
-   actually reachable from anywhere the DNS resolves — the gateway is public
-   once funnel is on; the tailnet is only needed for `tailscale` service
-   addresses.)
-2. **Point `LLM_BASE_URL` at any OpenAI-compatible endpoint** (OpenAI,
-   Groq, self-hosted vLLM behind your own reverse proxy) with a matching
-   `LLM_API_KEY` and `LLM_MODEL`. No code changes needed.
-
-If the LLM is unreachable the app still boots and degrades: document
-extraction falls back to a deterministic parser and memory recall is lexical.
+Continuum works with any LangChain chat provider by API key; set
+`LLM_PROVIDER` and `LLM_API_KEY` (for example `gemini` with a Google AI Studio
+key). See [providers.md](providers.md) for the supported providers and their
+defaults. Without a key the agent falls back to deterministic rules, so a
+deployment still works while a key is being arranged.
 
 ## 6. Voice (optional)
 
