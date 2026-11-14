@@ -35,8 +35,8 @@ Built for **Statement Three: Finish the Job** at MongoDB *Agents in Context*, To
 
 Every discharge comes with a plan: see your family doctor within a week, repeat the bloodwork, a nurse will visit. Nobody owns making sure it happens.
 
-- **1 in 5** Medicare patients are back in hospital within 30 days, and **half** of those readmitted after a medical stay never saw a doctor in between ([Jencks et al., NEJM 2009](https://pubmed.ncbi.nlm.nih.gov/19339721/)).
-- **41%** of patients leave hospital with test results still pending ([Roy et al., Annals of Internal Medicine 2005](https://pubmed.ncbi.nlm.nih.gov/16027454/)).
+- About **1 in 7** US hospital stays is followed by a readmission within 30 days, a rate that held steady every year from 2016 to 2020 ([AHRQ HCUP Statistical Brief #304, 2023](https://hcup-us.ahrq.gov/reports/statbriefs/sb304-readmissions-2016-2020.jsp)).
+- **More than half** of Medicare patients don't see a clinician within 7 days of leaving hospital: only 43.6% of 749,402 patients did ([Journal of General Internal Medicine, 2022](https://acphospitalist.acponline.org/archives/2022/04/06/free/timely-follow-up-after-hospitalization-may-reduce-disparities-in-readmissions.htm)).
 
 The follow-up is spread across hospitals, clinics, labs and phone calls, and everyone assumes someone else has it.
 

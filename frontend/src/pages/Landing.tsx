@@ -362,22 +362,16 @@ function Answers() {
 
 const STATS: { n: string; what: string; src: string; href: string }[] = [
   {
-    n: "1 in 5",
-    what: "Medicare patients return to hospital within 30 days of discharge.",
-    src: "Jencks et al., NEJM 2009",
-    href: "https://pubmed.ncbi.nlm.nih.gov/19339721/",
+    n: "1 in 7",
+    what: "US hospital stays end in a readmission within 30 days, year after year.",
+    src: "AHRQ HCUP Statistical Brief #304, 2023",
+    href: "https://hcup-us.ahrq.gov/reports/statbriefs/sb304-readmissions-2016-2020.jsp",
   },
   {
-    n: "Half",
-    what: "of those readmitted after a medical stay never saw a doctor in between.",
-    src: "Jencks et al., NEJM 2009",
-    href: "https://pubmed.ncbi.nlm.nih.gov/19339721/",
-  },
-  {
-    n: "41%",
-    what: "of patients leave the hospital with test results still pending.",
-    src: "Roy et al., Annals of Internal Medicine 2005",
-    href: "https://pubmed.ncbi.nlm.nih.gov/16027454/",
+    n: "56%",
+    what: "of Medicare patients don't see a clinician within 7 days of discharge.",
+    src: "Journal of General Internal Medicine, 2022",
+    href: "https://acphospitalist.acponline.org/archives/2022/04/06/free/timely-follow-up-after-hospitalization-may-reduce-disparities-in-readmissions.htm",
   },
 ];
 
