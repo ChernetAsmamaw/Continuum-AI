@@ -1,0 +1,46 @@
+name: continuum
+
+services:
+  continuum:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: continuum:latest
+    # MONGODB_URI, LLM_*, ELEVENLABS_*, CONTINUUM_VOICE_SECRET, AUTH_SECRET, …
+    env_file: .env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  # ── Optional local MongoDB (no Atlas). ──────────────────────────────────
+  #   docker compose --profile mongo up -d
+  # and point MONGODB_URI at it in .env:
+  #   mongodb://continuum:continuum@mongo:27017/continuum?authSource=admin
+  mongo:
+    image: mongo:7
+    profiles: ["mongo"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: continuum
+      MONGO_INITDB_ROOT_PASSWORD: continuum
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ping:1})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Optional local EHR sandbox (HAPI FHIR R4) for ingestion. ─────────────
+  #   docker compose --profile ehr up -d hapi
+  # then load Synthea patients: see docs/ingestion.md
+  hapi:
+    image: hapiproject/hapi:latest
+    profiles: ["ehr"]
+    ports:
+      - "8080:8080"
+    volumes:
+      - hapi-data:/data/hapi
+
+volumes:
+  mongo-data:
+  hapi-data:

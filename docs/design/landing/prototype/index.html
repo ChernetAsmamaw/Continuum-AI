@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Continuum landing (proposal)</title>
+<meta name="description" content="Design proposal for the Continuum public landing page. Not the live page.">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;500;600&family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&display=swap">
+<style>
+html, body { margin: 0; }
+body { background: #F6F5F2; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) body { background: #121315; } }
+:root[data-theme="dark"] body { background: #121315; }
+
+/* Prototype-only bar: says this is a proposal and lets reviewers switch theme. Not part of the page. */
+.proto-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+  padding: 8px 16px; background: #18191B; color: #ECEDEE; font: 13px/1.4 system-ui, -apple-system, sans-serif; }
+.proto-bar p { margin: 0; }
+.proto-bar fieldset { display: flex; gap: 4px; margin: 0; padding: 0; border: 0; }
+.proto-bar legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.proto-bar button { min-height: 28px; padding: 0 10px; border: 1px solid #43464C; border-radius: 4px; background: transparent; color: #ECEDEE; font: inherit; cursor: pointer; }
+.proto-bar button[aria-pressed="true"] { background: #ECEDEE; color: #18191B; border-color: #ECEDEE; }
+.proto-bar button:focus-visible { outline: 2px solid #86A6F5; outline-offset: 2px; }
+
+/* Public landing page. Scoped under .lp so nothing leaks into the console.
+   Tokens follow docs/design/README.md §v2.5: ink and red, red only for overdue. */
+
+.lp {
+  --bg: #F6F5F2;
+  --surface: #FFFFFF;
+  --sunken: #EFEEEA;
+  --line: #E2E0DA;
+  --line-strong: #C4C1B9;
+  --ink: #18191B;
+  --ink-2: #45484D;
+  --muted: #5E6167;
+  --red: #B42318;
+  --red-bg: #FBEDEB;
+  --focus: #2F5BD3;
+  --on-ink: #FFFFFF;
+  --sans: "Atkinson Hyperlegible Next", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --gutter: clamp(16px, 4vw, 48px);
+
+  color-scheme: light;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+.lp[data-theme="dark"],
+:root[data-theme="dark"] .lp {
+  --bg: #121315; --surface: #1A1C1F; --sunken: #0E0F11;
+  --line: #2C2F33; --line-strong: #43464C;
+  --ink: #ECEDEE; --ink-2: #C2C5CA; --muted: #9A9DA3;
+  --red: #FF8F80; --red-bg: #35100C; --focus: #86A6F5; --on-ink: #121315;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .lp:not([data-theme="light"]) {
+    --bg: #121315; --surface: #1A1C1F; --sunken: #0E0F11;
+    --line: #2C2F33; --line-strong: #43464C;
+    --ink: #ECEDEE; --ink-2: #C2C5CA; --muted: #9A9DA3;
+    --red: #FF8F80; --red-bg: #35100C; --focus: #86A6F5; --on-ink: #121315;
+    color-scheme: dark;
+  }
+}
+
+.lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
+.lp h1, .lp h2, .lp h3, .lp p, .lp ol, .lp dl, .lp dd, .lp figure { margin: 0; }
+.lp ol { padding: 0; list-style: none; }
+.lp a { color: inherit; }
+.lp :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
+
+.lp-wrap { width: 100%; max-width: 1200px; margin-inline: auto; padding-inline: var(--gutter); }
+
+.lp-skip {
+  position: absolute; left: 16px; top: -48px; z-index: 10;
+  padding: 8px 12px; background: var(--ink); color: var(--on-ink) !important;
+  border-radius: 4px; text-decoration: none; font-weight: 600;
+}
+.lp-skip:focus { top: 12px; }
+
+/* Header */
+.lp-header { border-bottom: 1px solid var(--line); }
+.lp-header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 60px; }
+.lp-wordmark { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; text-decoration: none; }
+.lp-nav { display: flex; align-items: center; gap: 24px; font-size: 14px; }
+.lp-nav a { color: var(--ink-2); text-decoration: none; }
+.lp-nav a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.lp-nav .lp-nav-signin { color: var(--ink); font-weight: 600; }
+
+/* Buttons */
+.lp-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 0 20px;
+  background: var(--ink); color: var(--on-ink) !important;
+  border-radius: 4px; font-size: 15px; font-weight: 600; text-decoration: none;
+}
+.lp-button:hover { background: var(--ink-2); }
+
+/* Hero */
+.lp-hero {
+  display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(40px, 6vw, 88px); align-items: start;
+  padding-top: clamp(48px, 8vw, 104px); padding-bottom: clamp(56px, 8vw, 112px);
+}
+.lp-lead-in { font-size: 15px; color: var(--muted); margin-bottom: 20px; }
+.lp h1 {
+  font-size: clamp(36px, 5.2vw, 60px); line-height: 1.06; font-weight: 700;
+  letter-spacing: -0.025em; max-width: 15ch; text-wrap: balance;
+}
+.lp-hero-text { margin-top: 28px; max-width: 58ch; font-size: 18px; line-height: 1.6; color: var(--ink-2); }
+.lp-cta { margin-top: 36px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.lp-cta p { font-size: 14px; color: var(--muted); max-width: 32ch; }
+
+/* Live worklist fragment */
+.lp-worklist { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; margin-top: 6px; }
+.lp-worklist-head { padding: 16px 20px 14px; border-bottom: 1px solid var(--line); }
+.lp-worklist-patient { font-size: 17px; font-weight: 700; }
+.lp-mono { font-family: var(--mono); font-size: 12px; line-height: 1.5; color: var(--muted); }
+.lp-rows li {
+  display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 4px 12px;
+  padding: 13px 20px; border-bottom: 1px solid var(--line);
+}
+.lp-rows li:last-child { border-bottom: 0; }
+.lp-glyph { padding-top: 6px; color: var(--ink-2); }
+.lp-glyph svg { display: block; width: 10px; height: 10px; }
+.lp-glyph path { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.lp-glyph circle { fill: currentColor; }
+.lp-glyph circle.ring { fill: none; stroke: currentColor; stroke-width: 1.2; }
+.lp-row-title { font-size: 14px; font-weight: 600; line-height: 1.4; }
+.lp-row-state { font-size: 13px; color: var(--ink-2); line-height: 1.45; margin-top: 2px; }
+.lp-row-source { margin-top: 3px; font-size: 11.5px; overflow-wrap: anywhere; }
+.lp-row-when { padding-top: 1px; text-align: right; white-space: nowrap; color: var(--ink-2); }
+.lp-rows li.is-done .lp-row-title { color: var(--ink-2); font-weight: 500; }
+.lp-rows li.is-overdue .lp-glyph,
+.lp-rows li.is-overdue .lp-row-when { color: var(--red); font-weight: 600; }
+.lp-worklist figcaption { padding: 12px 20px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); background: var(--sunken); border-radius: 0 0 6px 6px; }
+
+/* Sections */
+.lp-section { padding-top: clamp(56px, 8vw, 104px); padding-bottom: clamp(56px, 8vw, 104px); border-top: 1px solid var(--line); }
+.lp h2 { font-size: clamp(26px, 3vw, 34px); line-height: 1.15; font-weight: 700; letter-spacing: -0.015em; text-wrap: balance; }
+.lp h3 { font-size: 18px; line-height: 1.3; font-weight: 700; }
+.lp-split { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 32px clamp(40px, 6vw, 96px); }
+.lp-split-head p { margin-top: 16px; color: var(--ink-2); max-width: 44ch; }
+.lp-split-tight { align-items: end; }
+.lp-section-intro { color: var(--muted); max-width: 60ch; font-size: 15px; }
+
+/* Numbers */
+.lp-numbers { border-top: 1px solid var(--line-strong); }
+.lp-number {
+  display: grid; grid-template-columns: 12.5rem minmax(0, 1fr); gap: 8px 32px;
+  padding: 24px 0; border-bottom: 1px solid var(--line);
+}
+.lp-number dt { white-space: nowrap; font-size: clamp(34px, 4vw, 44px); line-height: 1; font-weight: 700; letter-spacing: -0.02em; }
+.lp-number dd p { font-size: 16px; line-height: 1.55; max-width: 52ch; }
+.lp-cite { display: inline-block; margin-top: 8px; font-family: var(--mono); font-size: 12px; color: var(--muted) !important; text-underline-offset: 3px; }
+.lp-cite:hover { color: var(--ink) !important; }
+
+/* Walk-through */
+.lp-steps { margin-top: clamp(40px, 5vw, 64px); counter-reset: none; }
+.lp-step {
+  display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 24px clamp(40px, 6vw, 96px);
+  padding: 32px 0; border-top: 1px solid var(--line);
+}
+.lp-step:last-child { border-bottom: 1px solid var(--line); }
+.lp-step-copy { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); align-content: start; }
+.lp-step-n { grid-row: span 2; font-family: var(--mono); font-size: 14px; color: var(--muted); padding-top: 3px; }
+.lp-step-copy h3 { margin-bottom: 8px; }
+.lp-step-copy p:not(.lp-step-n) { color: var(--ink-2); max-width: 46ch; }
+.lp-shot img {
+  display: block; width: 100%; height: auto;
+  border: 1px solid var(--line-strong); border-radius: 6px; background: #fff;
+}
+.lp-shot-narrow { max-width: 560px; }
+.lp-shot figcaption { margin-top: 10px; font-size: 13px; color: var(--muted); }
+
+/* Rules */
+.lp-rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line-strong); }
+.lp-rules article { padding: 24px 32px 28px 0; border-bottom: 1px solid var(--line); }
+.lp-rules article:nth-child(even) { padding-left: 32px; padding-right: 0; border-left: 1px solid var(--line); }
+.lp-rules p { margin-top: 8px; color: var(--ink-2); font-size: 15px; }
+
+/* Scope */
+.lp-scope { display: grid; gap: 16px; max-width: 62ch; }
+.lp-scope p:first-child { font-size: 18px; line-height: 1.6; }
+.lp-scope p + p { color: var(--muted); font-size: 15px; }
+
+/* Final */
+.lp-final { display: grid; justify-items: start; gap: 16px; }
+.lp-final p { max-width: 56ch; color: var(--ink-2); margin-bottom: 8px; }
+
+/* Footer */
+.lp-footer { border-top: 1px solid var(--line); }
+.lp-footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; padding-top: 24px; padding-bottom: 32px; font-size: 13px; color: var(--muted); }
+.lp-wordmark-small { color: var(--ink); font-weight: 700; }
+
+/* Tablet and down */
+@media (max-width: 960px) {
+  .lp-hero, .lp-split, .lp-step { grid-template-columns: minmax(0, 1fr); }
+  .lp h1 { max-width: 18ch; }
+  .lp-worklist { max-width: 560px; }
+}
+
+/* Phones */
+@media (max-width: 600px) {
+  .lp-nav { gap: 16px; }
+  .lp-nav a:not(.lp-nav-signin) { display: none; }
+  .lp-hero-text { font-size: 17px; }
+  .lp-rows li { grid-template-columns: 10px minmax(0, 1fr); padding: 12px 16px; }
+  .lp-row-when { grid-column: 2; text-align: left; padding-top: 2px; }
+  .lp-worklist-head, .lp-worklist figcaption { padding-inline: 16px; }
+  .lp-number { grid-template-columns: minmax(0, 1fr); padding: 20px 0; }
+  .lp-rules { grid-template-columns: minmax(0, 1fr); }
+  .lp-rules article, .lp-rules article:nth-child(even) { padding: 20px 0 24px; border-left: 0; }
+  .lp-step { padding: 24px 0; }
+  .lp-step-copy { grid-template-columns: 1.75rem minmax(0, 1fr); }
+  /* Wide console crops: show the left part larger instead of the whole frame tiny. */
+  .lp-shot-crop img { aspect-ratio: 1 / 1; object-fit: cover; object-position: left top; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .lp:not([data-theme="light"]) .lp-shot img { filter: brightness(0.9); }
+}
+:root[data-theme="dark"] .lp .lp-shot img { filter: brightness(0.9); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .lp-button, .lp-nav a { transition: background-color 120ms ease, color 120ms ease; }
+}
+
+</style>
+</head>
+<body>
+<div class="proto-bar" role="region" aria-label="Prototype controls">
+  <p>Design proposal for <code>/</code>. Not the live page. Demo links open the app at localhost:8000.</p>
+  <fieldset><legend>Theme</legend>
+    <button type="button" data-set="auto" aria-pressed="true">System</button>
+    <button type="button" data-set="light" aria-pressed="false">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </fieldset>
+</div>
+<div class="lp"><a class="lp-skip" href="#lp-main">Skip to content</a><header class="lp-header"><div class="lp-wrap lp-header-inner"><a class="lp-wordmark" aria-label="Continuum home" href="#lp-main" data-discover="true">Continuum</a><nav class="lp-nav" aria-label="Page sections"><a href="#how">How it works</a><a href="#rules">Rules</a><a class="lp-nav-signin" href="http://localhost:8000/login" data-discover="true">Sign in</a></nav></div></header><main id="lp-main"><section class="lp-wrap lp-hero" aria-labelledby="lp-title"><div class="lp-hero-copy"><p class="lp-lead-in">Follow-up tracking after hospital discharge</p><h1 id="lp-title">A follow-up stays open until there’s proof it happened.</h1><p class="lp-hero-text">When a hospital discharges a patient, Continuum reads the hospital’s own orders: the cardiology referral, the bloodwork, the culture still in the lab. Each becomes a tracked item. An item closes only when a matching result or visit comes back from the EHR and a coordinator signs it off.</p><div class="lp-cta"><a class="lp-button" href="http://localhost:8000/login" data-discover="true">Open the coordinator demo</a><p>Synthetic patients. No account needed: choose “Explore as care coordinator”.</p></div></div><figure class="lp-worklist" aria-labelledby="lp-worklist-cap"><div class="lp-worklist-head"><p class="lp-worklist-patient">Michael Chen, 64</p><p class="lp-mono">Discharged Nov 4 · St. Mary’s 5W · heart failure</p></div><ol class="lp-rows"><li class="is-done"><span class="lp-glyph" aria-hidden="true"><svg viewBox="0 0 10 10"><path d="M1.4 5.3 4 7.8 8.7 2.4"></path></svg></span><div class="lp-row-main"><p class="lp-row-title">Cardiology follow-up within 7 days</p><p class="lp-row-state">Clinic visit matched by order ID, signed off</p><p class="lp-mono lp-row-source">ServiceRequest/sr-88213 → Encounter/enc-5521</p></div><p class="lp-mono lp-row-when">Closed Nov 13</p></li><li class="is-done"><span class="lp-glyph" aria-hidden="true"><svg viewBox="0 0 10 10"><path d="M1.4 5.3 4 7.8 8.7 2.4"></path></svg></span><div class="lp-row-main"><p class="lp-row-title">Basic metabolic panel</p><p class="lp-row-state">Result matched by order ID, signed off</p><p class="lp-mono lp-row-source">ServiceRequest · lab</p></div><p class="lp-mono lp-row-when">Closed Nov 8</p></li><li><span class="lp-glyph" aria-hidden="true"><svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="3.9" class="ring"></circle></svg></span><div class="lp-row-main"><p class="lp-row-title">Blood culture, pending at discharge</p><p class="lp-row-state">No growth at 48 h. Waiting for the final report</p><p class="lp-mono lp-row-source">DiagnosticReport · preliminary</p></div><p class="lp-mono lp-row-when">Result pending</p></li><li class="is-overdue"><span class="lp-glyph" aria-hidden="true"><svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"></circle></svg></span><div class="lp-row-main"><p class="lp-row-title">Home-care assessment</p><p class="lp-row-state">Referral sent. No visit booked</p><p class="lp-mono lp-row-source">Discharge summary, no order</p></div><p class="lp-mono lp-row-when">2 days overdue</p></li><li><span class="lp-glyph" aria-hidden="true"><svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="3.9" class="ring"></circle></svg></span><div class="lp-row-main"><p class="lp-row-title">Medication review</p><p class="lp-row-state">Furosemide 40 → 80 mg, spironolactone added</p><p class="lp-mono lp-row-source">MedicationRequest × 2</p></div><p class="lp-mono lp-row-when">Open</p></li></ol><figcaption id="lp-worklist-cap">Example worklist for one synthetic patient. Red marks the only overdue item.</figcaption></figure></section><section class="lp-section lp-wrap lp-split" aria-labelledby="lp-problem"><div class="lp-split-head"><h2 id="lp-problem">Orders are written before the patient leaves. Results arrive after.</h2><p>Lab results and clinic visits come back days or weeks after discharge, often to a clinician who has moved on to other patients. Studies have counted how often they are missed.</p></div><dl class="lp-numbers"><div class="lp-number"><dt>20–62%</dt><dd><p>of test results for hospital inpatients were never followed up, across the studies in a 2011 systematic review.</p><a class="lp-cite" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3038104/" target="_blank" rel="noreferrer">Callen et al., BMJ Quality &amp; Safety, 2011</a></dd></div><div class="lp-number"><dt>38%</dt><dd><p>of Medicare heart-failure patients saw a doctor within 7 days of discharge at the median hospital. Hospitals with more early follow-up had fewer readmissions within 30 days.</p><a class="lp-cite" href="https://doi.org/10.1001/jama.2010.533" target="_blank" rel="noreferrer">Hernandez et al., JAMA, 2010</a></dd></div><div class="lp-number"><dt>$320M</dt><dd><p>in Medicare readmission penalties were expected across 2,273 hospitals in fiscal year 2023.</p><a class="lp-cite" href="https://www.healthcaredive.com/news/hospital-readmissions-fines-lower/635538/" target="_blank" rel="noreferrer">Healthcare Dive, reporting KFF Health News, Oct 2022</a></dd></div></dl></section><section class="lp-section lp-wrap" id="how" aria-labelledby="lp-how"><div class="lp-split lp-split-tight"><div class="lp-split-head"><h2 id="lp-how">One discharge, start to finish</h2></div><p class="lp-section-intro">Screens below are from the running console with synthetic patients. The hospital side is a FHIR test server loaded with the same kind of record a real EHR returns.</p></div><ol class="lp-steps"><li class="lp-step"><div class="lp-step-copy"><p class="lp-step-n">1</p><h3>The hospital sends a discharge message</h3><p>An HL7 ADT^A03 arrives. Continuum pulls the stay over FHIR: orders, booked appointments, results still pending, new medications and the discharge summary. The job saves after each of its five steps.</p></div><figure class="lp-shot lp-shot-crop"><img width="1104" height="465" loading="lazy" alt="Ingestion jobs screen: two discharges pulled over FHIR, each with five completed steps (pull, identify, structured, narrative, verify) and the note '5 structured follow-ups, 1 from the discharge narrative'." src="../screens/ingestion-jobs.png"><figcaption>Ingestion jobs. One discharge was also flagged for identity review.</figcaption></figure></li><li class="lp-step"><div class="lp-step-copy"><p class="lp-step-n">2</p><h3>The hospital’s orders become follow-ups</h3><p>Each referral, lab order and pending result becomes one item that keeps its order ID. The discharge summary is read only for what the orders missed, such as a home-care assessment, and those items are marked as read from text, to confirm.</p></div></li><li class="lp-step"><div class="lp-step-copy"><p class="lp-step-n">3</p><h3>Continuum chases what’s due</h3><p>It schedules check-in calls with the patient and creates tasks for the coordinator. Anything past its due date with no proof goes to the top of the list.</p></div><figure class="lp-shot lp-shot-narrow"><img width="720" height="500" loading="lazy" alt="Needs attention list: Respiratory clinic follow-up for Sarah Okafor, 4 days overdue, no booking confirmation received; Home-care assessment for Michael Chen, 2 days overdue, referral submitted but no appointment confirmed." src="../screens/needs-attention.png"><figcaption>Overdue items, with the latest evidence for each.</figcaption></figure></li><li class="lp-step"><div class="lp-step-copy"><p class="lp-step-n">4</p><h3>Proof closes the item</h3><p>When a result or visit comes back that references the order ID, Continuum attaches it and queues one approval. The coordinator reads the evidence and approves or rejects it. Both are written to the audit log.</p></div><figure class="lp-shot lp-shot-crop"><img width="1000" height="470" loading="lazy" alt="Approval card: Verify completion of a pending blood culture result. Evidence on file is the final DiagnosticReport, no growth at 5 days. Buttons: Reject, Approve change." src="../screens/approval-evidence.png"><figcaption>A final lab report matched to its order, waiting for sign-off.</figcaption></figure></li></ol></section><section class="lp-section lp-wrap lp-split" id="rules" aria-labelledby="lp-rules"><div class="lp-split-head"><h2 id="lp-rules">Four rules built into the backend</h2></div><div class="lp-rules"><article><h3>No proof, no closure</h3><p>A follow-up closes when the EHR sends back a result or visit that points to its order ID, and a coordinator approves it. A patient saying “I went” is recorded as patient-reported. It does not close anything.</p></article><article><h3>A crash doesn’t redo work</h3><p>Each discharge runs as a job with five saved steps. If the process dies after step three, the restart begins at step four. It does not pull the record again or create the follow-ups twice.</p></article><article><h3>Sent is not done</h3><p>Every call and task is written down before it goes out, then marked sent, then confirmed only when the expected proof arrives: a call transcript or the coordinator’s decision. An interrupted send is marked unknown and left for a person. It is never retried automatically.</p></article><article><h3>New codes go to a person</h3><p>When a hospital starts using an order code Continuum hasn’t seen, it looks for similar past orders with Atlas Vector Search, proposes a type, and asks a coordinator to confirm before creating the follow-up.</p></article></div></section><section class="lp-section lp-wrap lp-split" aria-labelledby="lp-scope"><div class="lp-split-head"><h2 id="lp-scope">What it is not</h2></div><div class="lp-scope"><p>Continuum is an administrative tool. It tracks whether follow-up that clinicians already ordered took place. It does not diagnose, suggest treatment or change orders. Results that need a clinical read are assigned to the attending physician.</p><p>Every patient in the demo is synthetic. It was built for the MongoDB Agents in Context hackathon (problem 3, “Finish the job”) on MongoDB Atlas, LangGraph, FastAPI and React.</p></div></section><section class="lp-section lp-wrap lp-final" aria-labelledby="lp-try"><h2 id="lp-try">Try it with synthetic patients</h2><p>The demo opens the coordinator console with a synthetic caseload, its open follow-ups and the approvals waiting on them. On the sign-in page, choose “Explore as care coordinator”.</p><a class="lp-button" href="http://localhost:8000/login" data-discover="true">Open the coordinator demo</a></section></main><footer class="lp-footer"><div class="lp-wrap lp-footer-inner"><span class="lp-wordmark-small">Continuum</span><span>Synthetic data only. Not for clinical decisions.</span></div></footer></div>
+
+<script>
+(function () {
+  var root = document.documentElement, buttons = document.querySelectorAll('.proto-bar button');
+  function apply(mode) {
+    if (mode === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', mode);
+    buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.set === mode)); });
+    try { localStorage.setItem('continuum-landing-proto-theme', mode); } catch (e) {}
+  }
+  buttons.forEach(function (b) { b.addEventListener('click', function () { apply(b.dataset.set); }); });
+  var saved = null; try { saved = localStorage.getItem('continuum-landing-proto-theme'); } catch (e) {}
+  var q = new URLSearchParams(location.search).get('theme');
+  apply(q || saved || 'auto');
+})();
+</script>
+</body>
+</html>
