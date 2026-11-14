@@ -19,7 +19,6 @@ import { PatientIntake } from "./pages/PatientIntake";
 import { PatientJourney } from "./pages/PatientJourney";
 import { PatientsPage } from "./pages/PatientsPage";
 import { QueuePage } from "./pages/QueuePage";
-import { ReviewPage } from "./pages/ReviewPage";
 import { WorkPage } from "./pages/WorkPage";
 
 function HomeRedirect() {
@@ -51,7 +50,7 @@ export default function App() {
               <Route path="/patients/:patientId/agent" element={<Inspector />} />
               <Route path="/patients/:patientId/call" element={<CallRoom />} />
               <Route path="/approvals" element={<ApprovalsPage />} />
-              <Route path="/review" element={<ReviewPage />} />
+              <Route path="/review" element={<Navigate to="/approvals?tab=checks" replace />} />
               <Route path="/ingestion" element={<IngestionPage />} />
               <Route path="/actions" element={<ActionsPage />} />
               <Route path="/audit" element={<AuditPage />} />

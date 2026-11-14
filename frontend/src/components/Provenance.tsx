@@ -29,27 +29,27 @@ export function ProvenanceTags({ obligation }: { obligation: Obligation }) {
   return (
     <>
       {obligation.origin === "ehr_structured" ? (
-        <span className="tag tag-blue" title={`Structured EHR record${obligation.fhir_refs?.length ? `: ${obligation.fhir_refs[0]}` : ""}`}>
-          EHR order
+        <span className="tag-tone tone-blue" title={`Structured EHR record${obligation.fhir_refs?.length ? `: ${obligation.fhir_refs[0]}` : ""}`}>
+          Hospital order
         </span>
       ) : obligation.origin === "ai_extracted" ? (
-        <span className="tag tag-purple" title="Extracted by AI from the discharge narrative">
-          AI-extracted
+        <span className="tag-tone tone-violet" title="Extracted by AI from the discharge narrative">
+          From the summary
         </span>
       ) : null}
       {obligation.possible_duplicate_of ? (
-        <span className="tag tag-amber" title="May be the same as an EHR order whose type is unconfirmed">
+        <span className="tag-tone tone-amber" title="May be the same as an EHR order whose type is unconfirmed">
           Possible duplicate
         </span>
       ) : null}
       {cb && !cb.confirmed ? (
-        <span className="tag tag-amber" title={classificationTitle(cb)}>
+        <span className="tag-tone tone-amber" title={classificationTitle(cb)}>
           {cb.method === "unrecognized" ? "Type unrecognized" : "Type inferred"}
         </span>
       ) : null}
       {cb?.confirmed ? (
         <span
-          className="tag tag-green"
+          className="tag-tone tone-green"
           title={cb.outcome === "learned" ? `Code taught earlier by ${cb.confirmed_by}` : `${cb.outcome === "corrected" ? "Corrected" : "Confirmed"} by ${cb.confirmed_by}`}
         >
           Type {cb.outcome === "corrected" ? "corrected" : cb.outcome === "learned" ? "learned" : "confirmed"}
@@ -236,7 +236,7 @@ export function OrderTypeForm({
         <div className="order-type-duplicates">
           {duplicates.map((dup) => (
             <p key={dup.id}>
-              <span className="tag tag-amber">Possible duplicate</span> The discharge narrative also produced{" "}
+              <span className="tag-tone tone-amber">Possible duplicate</span> The discharge narrative also produced{" "}
               <b>“{dup.description}”</b> ({categoryLabel(dup.category)}){dup.quote ? <> from “{dup.quote.replace(/[.\s]+$/, "")}”</> : null}.{" "}
               {category === dup.category
                 ? "Saving this type treats them as one follow-up and cancels the AI copy."

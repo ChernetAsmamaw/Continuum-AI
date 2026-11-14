@@ -131,7 +131,7 @@ function IdentityCaseCard({ item, onResolved }: { item: IdentityCase; onResolved
   );
 }
 
-export function ReviewPage() {
+export function ReviewPage({ embedded = false }: { embedded?: boolean }) {
   const { refreshKey, refresh, notify } = useApp();
   const [queue, setQueue] = useState<ReviewQueue | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -157,8 +157,18 @@ export function ReviewPage() {
 
   if (!queue) return error ? <ErrorBanner message={error} onRetry={load} /> : <Spinner label="Loading the review queue" />;
 
+  if (embedded && queue.counts.total === 0) {
+    return (
+      <div className="dq-empty">
+        <h2>No order types or identities to check.</h2>
+        <p>When a hospital order isn't recognized, or a discharge matches an existing patient by name only, it appears here.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="stack">
+      {embedded ? null : (
       <header className="page-head">
         <div>
           <p className="eyebrow">
@@ -173,6 +183,7 @@ export function ReviewPage() {
           </p>
         </div>
       </header>
+      )}
 
       {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 

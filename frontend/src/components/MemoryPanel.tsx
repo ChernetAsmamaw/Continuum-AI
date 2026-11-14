@@ -104,7 +104,7 @@ export function MemoryPanel({
                 {memory.score !== undefined ? <span className="memory-score">{pct(memory.score)} match</span> : null}
                 <small>{formatDateTime(memory.created_at)}</small>
               </div>
-              <p className="memory-summary">{memory.summary}</p>
+              <p className="memory-summary">{memory.summary.replace(/\*\*|__|`/g, "").replace(/\s+/g, " ").trim()}</p>
               {!compact && memory.content && memory.content !== memory.summary ? (
                 <p className="memory-content">{memory.content}</p>
               ) : null}

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { ApprovalCard } from "../components/ApprovalCard";
+import { ReviewPage } from "./ReviewPage";
 import { useApp } from "../state";
 import { approvalKind } from "../tones";
 import type { Approval } from "../types";
@@ -13,7 +14,7 @@ import { ErrorBanner, Spinner, cx, formatDateTime } from "../ui";
  * items first, then oldest first, so nothing waits longest by accident.
  */
 
-type Tab = "pending" | "resolved";
+type Tab = "pending" | "checks" | "resolved";
 
 function waited(iso: string): string {
   const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
@@ -27,11 +28,12 @@ const urgencyRank = (a: Approval) => (a.urgency === "emergency" ? 0 : a.urgency 
 
 export function ApprovalsPage() {
   const { user } = useAuth();
-  const { dashboard, refreshKey, refresh, notify } = useApp();
+  const { dashboard, refreshKey, refresh, notify, ops } = useApp();
   const [params, setParams] = useSearchParams();
   const isClinician = user?.role === "clinician";
   const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [tab, setTab] = useState<Tab>("pending");
+  const tab: Tab = (["pending", "checks", "resolved"] as Tab[]).includes(params.get("tab") as Tab) ? (params.get("tab") as Tab) : "pending";
+  const setTab = (t: Tab) => setParams(t === "pending" ? {} : { tab: t }, { replace: true });
   const [patientFilter, setPatientFilter] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -41,6 +43,7 @@ export function ApprovalsPage() {
 
   const load = useCallback(async () => {
     try {
+      if (tab === "checks") return;
       const data = await api.approvals({ status: tab === "pending" ? "pending" : "" });
       setApprovals(tab === "resolved" ? data.approvals.filter((a) => a.status !== "pending") : data.approvals);
       setError(null);
@@ -75,7 +78,14 @@ export function ApprovalsPage() {
   }, [approvals, patientFilter, tab]);
 
   const current = visible.find((a) => a.id === openId) || visible[0] || null;
-  const open = (id: string) => setParams((p) => { p.set("id", id); return p; }, { replace: true });
+  const open = (id: string) =>
+    setParams(
+      (p) => {
+        p.set("id", id);
+        return p;
+      },
+      { replace: true },
+    );
 
   // J / K move through the queue.
   useEffect(() => {
@@ -140,6 +150,9 @@ export function ApprovalsPage() {
             <button type="button" aria-pressed={tab === "pending"} onClick={() => setTab("pending")}>
               Waiting {tab === "pending" && pendingCount ? <b>{pendingCount}</b> : null}
             </button>
+            <button type="button" aria-pressed={tab === "checks"} onClick={() => setTab("checks")}>
+              Order and ID checks {ops?.review ? <b>{ops.review}</b> : null}
+            </button>
             <button type="button" aria-pressed={tab === "resolved"} onClick={() => setTab("resolved")}>
               Decided
             </button>
@@ -157,7 +170,9 @@ export function ApprovalsPage() {
 
       {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 
-      {loading && approvals.length === 0 ? (
+      {tab === "checks" ? (
+        <ReviewPage embedded />
+      ) : loading && approvals.length === 0 ? (
         <Spinner label="Loading decisions" />
       ) : visible.length === 0 ? (
         <div className="dq-empty">

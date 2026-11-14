@@ -110,16 +110,12 @@ export function PatientIntake() {
 
   return (
     <div className="stack">
-      <header className="page-head">
+      <header className="dq-head">
         <div>
-          <p className="eyebrow">
-            <span className="eyebrow-dot" />
-            New patient
-          </p>
-          <h1>Patient intake</h1>
-          <p className="page-sub">
-            Create a patient, their care episode and post-discharge follow-ups. Optional: paste a
-            discharge summary and the coordination agent will extract additional follow-ups.
+          <h1>Add a discharge</h1>
+          <p>
+            Most discharges arrive on their own from the hospital record. Use this for one that didn't, or for a patient from another
+            hospital. Only the name is required.
           </p>
         </div>
       </header>
@@ -154,12 +150,18 @@ export function PatientIntake() {
         </div>
       ) : null}
 
-      <form onSubmit={submit} noValidate>
-        <div className="stack">
-          <Card title="Patient" subtitle="Identity and contact">
-            <div className="intake-grid">
-              <label className="field">
-                <span>Full name *</span>
+      <form onSubmit={submit} noValidate className="in-form">
+        <section className="in-step">
+          <header>
+            <span className="in-n">1</span>
+            <div>
+              <h2>Who is the patient?</h2>
+              <p>Enough to find them again and to check it's the right person on a call.</p>
+            </div>
+          </header>
+          <div className="in-grid">
+              <label className="field in-wide">
+                <span>Full name <em>required</em></span>
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Rosa Delgado" required />
               </label>
               <label className="field">
@@ -167,7 +169,7 @@ export function PatientIntake() {
                 <input id="intake-dob" type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
               </label>
               <label className="field">
-                <span>Age (if DOB unknown)</span>
+                <span>Age, if birth date unknown</span>
                 <input type="number" min={0} max={130} value={age} onChange={(e) => setAge(e.target.value)} placeholder="64" />
               </label>
               <label className="field">
@@ -179,18 +181,6 @@ export function PatientIntake() {
                 <input value={pronouns} onChange={(e) => setPronouns(e.target.value)} placeholder="he/him" />
               </label>
               <label className="field">
-                <span>Condition</span>
-                <input value={condition} onChange={(e) => setCondition(e.target.value)} placeholder="Heart failure" />
-              </label>
-              <label className="field">
-                <span>Risk</span>
-                <select value={risk} onChange={(e) => setRisk(e.target.value as "Low" | "Medium" | "High")}>
-                  <option>Low</option>
-                  <option>Medium</option>
-                  <option>High</option>
-                </select>
-              </label>
-              <label className="field">
                 <span>Phone</span>
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 416 555 0100" />
               </label>
@@ -198,44 +188,115 @@ export function PatientIntake() {
                 <span>Email</span>
                 <input id="intake-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="rosa@example.com" />
               </label>
-              <label className="field">
-                <span>Caregiver name</span>
-                <input value={caregiver} onChange={(e) => setCaregiver(e.target.value)} placeholder="Luis Delgado" />
-              </label>
-              <label className="field">
-                <span>Caregiver relationship</span>
-                <input id="intake-cg-rel" value={caregiverRelationship} onChange={(e) => setCaregiverRelationship(e.target.value)} placeholder="Son" />
-              </label>
-              <label className="field">
-                <span>Caregiver phone</span>
-                <input id="intake-cg-phone" value={caregiverPhone} onChange={(e) => setCaregiverPhone(e.target.value)} placeholder="+1 416 555 0123" />
-              </label>
-              <label className="consent-line intake-field-wide">
-                <input id="intake-cg-discuss" type="checkbox" checked={caregiverMayDiscuss} onChange={(e) => setCaregiverMayDiscuss(e.target.checked)} />
-                <span>Patient allows the care team to discuss their care with this caregiver</span>
-              </label>
-            </div>
-          </Card>
+          </div>
+        </section>
 
-          <Card title="Care episode" subtitle="Admission and discharge">
-            <div className="intake-grid">
+        <section className="in-step">
+          <header>
+            <span className="in-n">2</span>
+            <div>
+              <h2>The hospital stay</h2>
+              <p>Dates start the 30-day clock. Paste the discharge summary and the assistant finds the follow-ups in it.</p>
+            </div>
+          </header>
+          <div className="in-grid">
               <label className="field">
-                <span>Admission date</span>
+                <span>Admitted</span>
                 <input type="date" value={admissionDate} onChange={(e) => setAdmissionDate(e.target.value)} />
               </label>
               <label className="field">
-                <span>Discharge date</span>
+                <span>Discharged</span>
                 <input type="date" value={dischargeDate} onChange={(e) => setDischargeDate(e.target.value)} />
               </label>
-              <label className="field intake-field-wide">
-                <span>Reason for admission</span>
+              <label className="field in-wide">
+                <span>Reason for the stay</span>
                 <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Decompensated heart failure" />
               </label>
-            </div>
-          </Card>
+              <label className="field">
+                <span>Condition</span>
+                <input value={condition} onChange={(e) => setCondition(e.target.value)} placeholder="Heart failure" />
+              </label>
+              <label className="field">
+                <span>Readmission risk</span>
+                <select value={risk} onChange={(e) => setRisk(e.target.value as "Low" | "Medium" | "High")}>
+                  <option>Low</option>
+                  <option>Medium</option>
+                  <option>High</option>
+                </select>
+              </label>
+              <label className="field in-full">
+                <span>
+                  Discharge summary <em>optional</em>
+                </span>
+                <textarea
+                  rows={6}
+                  value={dischargeSummary}
+                  onChange={(e) => setDischargeSummary(e.target.value)}
+                  placeholder="Paste the summary. For example: Plan: family physician follow-up in 7 days, bloodwork in 14 days…"
+                />
+                <small className="form-hint">Read by the assistant a few seconds after you save. Every follow-up it finds links back to its sentence.</small>
+              </label>
+          </div>
+        </section>
 
-          <Card title="Contact & consent" subtitle="How the voice agent may reach this patient">
-            <div className="intake-grid">
+        <section className="in-step">
+          <header>
+            <span className="in-n">3</span>
+            <div>
+              <h2>Follow-ups you already know about</h2>
+              <p>Anything the summary might miss. A blank date means 7 days after discharge.</p>
+            </div>
+          </header>
+          <div className="in-obls">
+            {obligations.map((item, index) => (
+              <div className="intake-obligation" key={index}>
+                <input
+                  className="intake-obl-description"
+                  value={item.description}
+                  onChange={(e) => setObligation(index, { description: e.target.value })}
+                  placeholder="What needs to happen, e.g. Cardiology follow-up"
+                  aria-label={`Follow-up ${index + 1} description`}
+                />
+                <input
+                  value={item.owner || ""}
+                  onChange={(e) => setObligation(index, { owner: e.target.value })}
+                  placeholder="Who does it, e.g. Cardiology clinic"
+                  aria-label={`Follow-up ${index + 1} owner`}
+                />
+                <input
+                  type="date"
+                  value={item.due_date || ""}
+                  onChange={(e) => setObligation(index, { due_date: e.target.value })}
+                  aria-label={`Follow-up ${index + 1} due date`}
+                  title="Leave blank to default to 7 days after discharge"
+                />
+                {obligations.length > 1 ? (
+                  <button
+                    type="button"
+                    className="intake-obl-remove"
+                    onClick={() => setObligations((current) => current.filter((_, i) => i !== index))}
+                    aria-label={`Remove follow-up ${index + 1}`}
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </div>
+            ))}
+            <button type="button" className="ob-more in-add" onClick={() => setObligations((current) => [...current, { ...EMPTY_OBLIGATION }])}>
+              Add another follow-up
+            </button>
+          </div>
+        </section>
+
+        <section className="in-step">
+          <header>
+            <span className="in-n">4</span>
+            <div>
+              <h2>How to reach them</h2>
+              <p>The voice assistant only calls patients who agreed to it. Without consent, check-ins become calls for you to make.</p>
+            </div>
+          </header>
+          <div className="in-grid">
               <label className="field">
                 <span>Preferred channel</span>
                 <select value={channel} onChange={(e) => setChannel(e.target.value as typeof channel)}>
@@ -257,105 +318,50 @@ export function PatientIntake() {
                 <span>Time zone</span>
                 <input id="intake-tz" value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder="America/Toronto" />
               </label>
-              <label className="consent-line">
-                <input id="intake-interpreter" type="checkbox" checked={interpreter} onChange={(e) => setInterpreter(e.target.checked)} />
-                <span>Needs an interpreter</span>
+              <fieldset className="in-checks in-full">
+                <legend>Confirmed with the patient</legend>
+                <label>
+                  <input type="checkbox" checked={consentCalls} onChange={(e) => setConsentCalls(e.target.checked)} />
+                  <span>Agrees to automated check-in calls</span>
+                </label>
+                <label>
+                  <input type="checkbox" checked={consentRecording} onChange={(e) => setConsentRecording(e.target.checked)} />
+                  <span>Agrees to calls being recorded</span>
+                </label>
+                <label>
+                  <input id="intake-interpreter" type="checkbox" checked={interpreter} onChange={(e) => setInterpreter(e.target.checked)} />
+                  <span>Needs an interpreter</span>
+                </label>
+              </fieldset>
+              <label className="field">
+                <span>Caregiver</span>
+                <input value={caregiver} onChange={(e) => setCaregiver(e.target.value)} placeholder="Luis Delgado" />
               </label>
-              <div className="field">
-                <span>Consent</span>
-                <div className="stack stack-tight">
-                  <label className="consent-line">
-                    <input type="checkbox" checked={consentCalls} onChange={(e) => setConsentCalls(e.target.checked)} />
-                    <span>Consent to automated check-in calls</span>
-                  </label>
-                  <label className="consent-line">
-                    <input type="checkbox" checked={consentRecording} onChange={(e) => setConsentRecording(e.target.checked)} />
-                    <span>Consent to call recording</span>
-                  </label>
-                  <small className="form-hint">Tick only after confirming with the patient. Without consent, check-ins become coordinator call tasks.</small>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <Card
-            title="Follow-up obligations"
-            subtitle="Structured follow-ups to track after discharge. A blank due date defaults to 7 days after discharge."
-            action={
-              <button
-                type="button"
-                className="btn"
-                onClick={() => setObligations((current) => [...current, { ...EMPTY_OBLIGATION }])}
-              >
-                + Add follow-up
-              </button>
-            }
-          >
-            <div className="stack stack-tight">
-              {obligations.map((item, index) => (
-                <div className="intake-obligation" key={index}>
-                  <input
-                    className="intake-obl-description"
-                    value={item.description}
-                    onChange={(e) => setObligation(index, { description: e.target.value })}
-                    placeholder="e.g. Cardiology follow-up"
-                    aria-label={`Follow-up ${index + 1} description`}
-                  />
-                  <input
-                    value={item.owner || ""}
-                    onChange={(e) => setObligation(index, { owner: e.target.value })}
-                    placeholder="Owner (e.g. Cardiology clinic)"
-                    aria-label={`Follow-up ${index + 1} owner`}
-                  />
-                  <input
-                    type="date"
-                    value={item.due_date || ""}
-                    onChange={(e) => setObligation(index, { due_date: e.target.value })}
-                    aria-label={`Follow-up ${index + 1} due date`}
-                    title="Leave blank to default to 7 days after discharge"
-                  />
-                  {obligations.length > 1 ? (
-                    <button
-                      type="button"
-                      className="intake-obl-remove"
-                      onClick={() => setObligations((current) => current.filter((_, i) => i !== index))}
-                      aria-label={`Remove follow-up ${index + 1}`}
-                    >
-                      ✕
-                    </button>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card
-            title="Discharge summary (optional)"
-            subtitle="Paste the raw summary — the agent extracts additional follow-ups with sources"
-          >
-            <label className="field">
-              <span>Discharge summary text</span>
-              <textarea
-                rows={6}
-                value={dischargeSummary}
-                onChange={(e) => setDischargeSummary(e.target.value)}
-                placeholder="Mr. Chen was discharged after treatment for decompensated heart failure. Plan: family physician follow-up in 7 days, bloodwork in 14 days…"
-              />
-            </label>
-            <p className="form-hint">
-              Structured follow-ups above are recorded immediately. Text here is processed by the
-              coordination agent after the patient is created (takes a few seconds).
-            </p>
-          </Card>
-
-          <div className="actions intake-actions">
-            <button type="button" className="btn" onClick={() => navigate("/patients")}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={busy || name.trim().length < 2}>
-              {busy ? "Creating patient…" : "Create patient"}
-            </button>
+              <label className="field">
+                <span>Relationship</span>
+                <input id="intake-cg-rel" value={caregiverRelationship} onChange={(e) => setCaregiverRelationship(e.target.value)} placeholder="Son" />
+              </label>
+              <label className="field">
+                <span>Caregiver phone</span>
+                <input id="intake-cg-phone" value={caregiverPhone} onChange={(e) => setCaregiverPhone(e.target.value)} placeholder="+1 416 555 0123" />
+              </label>
+              <fieldset className="in-checks in-full">
+                <label>
+                  <input id="intake-cg-discuss" type="checkbox" checked={caregiverMayDiscuss} onChange={(e) => setCaregiverMayDiscuss(e.target.checked)} />
+                  <span>The patient allows us to discuss their care with this caregiver</span>
+                </label>
+              </fieldset>
           </div>
+        </section>
+
+        <div className="in-bar">
+          <span className="muted">{name.trim().length < 2 ? "Enter the patient's name to continue." : `Ready to add ${name.trim()}.`}</span>
+          <button type="button" className="btn" onClick={() => navigate("/patients")}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={busy || name.trim().length < 2}>
+            {busy ? "Adding…" : "Add patient"}
+          </button>
         </div>
       </form>
     </div>

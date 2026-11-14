@@ -183,7 +183,7 @@ function ImportRow({ job, name, onResumed }: { job: IngestJob; name?: string; on
           </ol>
           <div className="im-foot">
             {patientId && known ? <Link to={`/patients/${patientId}`}>Open {name}</Link> : null}
-            {job.result?.identity_review ? <Link to="/review#identity" className="tone-amber">Check the identity match</Link> : null}
+            {job.result?.identity_review ? <Link to="/approvals?tab=checks" className="tone-amber">Check the identity match</Link> : null}
             <details className="im-tech">
               <summary>Technical details</summary>
               <dl>
